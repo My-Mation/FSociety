@@ -504,11 +504,13 @@
             // ✅ NEW: Collect ALL frames locally, send only at the end
             calibrationData.push({
                 amplitude,
-                dominant_freq: dominantFreq,
-                freq_confidence: freqConfidence,
+                peaks: [{
+                    freq: dominantFreq,
+                    amp: freqConfidence
+                }],
                 timestamp: Date.now()
             });
-            
+
             // Count valid frames for UI
             if (amplitude >= AMPLITUDE_THRESHOLD && freqConfidence >= CONFIDENCE_THRESHOLD) {
                 calibrationValidFrames++;
@@ -547,8 +549,11 @@
                         body: JSON.stringify({
                             frames: calibrationData,
                             machine_id: selectedMachine,
-                            mode: 'calibration'
+                            mode: 'calibration',
+                            store_all: true,               // 🔥 REQUIRED
+                            frames_captured: calibrationData.length
                         })
+
                     });
                     
                     const result = await response.json();
@@ -709,22 +714,19 @@
                 
                 container.innerHTML = profiles.map(p => `
                     <div class="profile-card">
-                        <div class="profile-header">
-                            ${p.machine_id.replace('_', ' ').toUpperCase()}
-                            <button class="delete-btn" onclick="deleteProfile('${p.machine_id}')">🗑️</button>
+                        <div class="profile-detail">
+                            <span>Median Frequency:</span>
+                            <strong>${p.median_freq} Hz</strong>
                         </div>
                         <div class="profile-detail">
-                            <span>Mean Frequency:</span>
-                            <strong>${p.mean_freq} Hz</strong>
+                            <span>IQR Range:</span>
+                            <strong>${p.iqr_low} – ${p.iqr_high} Hz</strong>
                         </div>
                         <div class="profile-detail">
-                            <span>Std Deviation:</span>
-                            <strong>±${p.std_freq} Hz</strong>
+                            <span>Bandwidth (IQR):</span>
+                            <strong>${p.iqr} Hz</strong>
                         </div>
-                        <div class="profile-detail">
-                            <span>Detection Range:</span>
-                            <strong>${p.min_freq} - ${p.max_freq} Hz</strong>
-                        </div>
+
                     </div>
                 `).join('');
             } catch (error) {

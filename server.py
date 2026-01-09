@@ -614,10 +614,9 @@ def save_profile():
     """
     Analyze calibration data and save machine profile using IQR.
     Expects: {"machine_id": "machine_1"}
-    Processes peaks from calibration batches
     """
-    cursor = conn.cursor()  # ✅ NEW cursor per request
-    
+    cursor = conn.cursor()
+
     try:
         data = request.get_json(force=True)
         machine_id = data.get("machine_id")
@@ -625,7 +624,7 @@ def save_profile():
         if not machine_id:
             return jsonify({"error": "machine_id required"}), 400
 
-        # Fetch all dominant frequency values from calibration (peaks will be in dominant_freq column)
+        # ✅ 1. FETCH CALIBRATION DATA (THIS WAS MISSING)
         cursor.execute(
             """
             SELECT dominant_freq, peaks
@@ -636,83 +635,53 @@ def save_profile():
             """,
             (machine_id,)
         )
-        
         rows = cursor.fetchall()
 
-        if not rows or len(rows) == 0:
+        if not rows:
             return jsonify({"error": "No calibration data found"}), 400
 
-        # Extract all frequencies (server-observed valid frames)
+        # ✅ 2. EXTRACT FREQUENCIES
         frequencies = []
-        for r in rows:
-            dom = r[0]
-            peaks = r[1]
+        for dom, peaks in rows:
             if peaks:
-                try:
-                    for p in peaks:
-                        f = p.get('freq') if isinstance(p, dict) else None
+                for p in peaks:
+                    if isinstance(p, dict):
+                        f = p.get("freq")
                         if f and f > 0:
                             frequencies.append(f)
-                except Exception:
-                    pass
             elif dom and dom > 0:
                 frequencies.append(dom)
 
-        frequencies = sorted(frequencies)
-
-        # Prefer client-reported count of captured frames if provided
-        frames_captured = data.get("frames_captured", None)
-        if frames_captured is None:
-            frames_captured = len(frequencies)
-
-        # Require at least 10 captured frames (client-reported) to proceed
-        if frames_captured < 10:
+        if len(frequencies) < 10:
             return jsonify({
-                "error": f"Not enough captured frames ({frames_captured} < 10)"
+                "error": f"Not enough valid frequencies ({len(frequencies)} < 10)"
             }), 400
 
-        # Calculate median and IQR (Interquartile Range)
-        # Compute median and quartiles safely even for small sample sizes
-        n = len(frequencies)
-        if n == 0:
-            return jsonify({"error": "No valid dominant frequencies found in calibration data"}), 400
+        frequencies.sort()
 
-        def percentile(sorted_vals, pct):
-            if not sorted_vals:
-                return None
-            idx = int(pct * (len(sorted_vals) - 1))
-            return sorted_vals[idx]
+        # ✅ 3. COMPUTE MEDIAN + IQR
+        def percentile(vals, p):
+            return vals[int(p * (len(vals) - 1))]
 
         median_freq = percentile(frequencies, 0.5)
         q1 = percentile(frequencies, 0.25)
         q3 = percentile(frequencies, 0.75)
 
         iqr = q3 - q1
-        iqr_low = max(0, q1 - 0.5 * iqr)   # Conservative: extend slightly beyond IQR
+        iqr_low = max(0, q1 - 0.5 * iqr)
         iqr_high = q3 + 0.5 * iqr
-
-        # Reject if IQR is too large (unstable machine)
-        force_save = data.get('force_save', False)
-        if iqr > IQR_LIMIT and not force_save:
-            return jsonify({
-                "error": f"Machine profile too unstable (IQR={iqr:.1f} Hz > {IQR_LIMIT:.1f} Hz limit)",
-                "iqr": round(iqr, 2),
-                "frames_captured": frames_captured,
-                "frames_used": len(frequencies)
-            }), 400
 
         print(f"\n=== PROFILE CREATED: {machine_id} ===")
         print(f"Frames analyzed: {len(frequencies)}")
         print(f"Median frequency: {median_freq:.2f} Hz")
-        print(f"Q1 (25%): {q1:.2f} Hz, Q3 (75%): {q3:.2f} Hz")
-        print(f"IQR: {iqr:.2f} Hz")
-        print(f"Detection range: {iqr_low:.2f} - {iqr_high:.2f} Hz")
+        print(f"IQR range: {iqr_low:.2f} – {iqr_high:.2f} Hz")
 
-        # Save or update profile with IQR-based approach
+        # ✅ 4. SAVE PROFILE (ONLY AFTER COMPUTATION)
         cursor.execute(
             """
-            INSERT INTO machine_profiles (machine_id, median_freq, iqr_low, iqr_high, created_at)
-            VALUES (%s, %s, %s, %s, NOW())
+            INSERT INTO machine_profiles
+                (machine_id, median_freq, iqr_low, iqr_high, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, NOW(), NOW())
             ON CONFLICT (machine_id)
             DO UPDATE SET
                 median_freq = EXCLUDED.median_freq,
@@ -740,10 +709,7 @@ def save_profile():
         return jsonify({"error": "server error"}), 500
 
     finally:
-        cursor.close()  # ✅ ALWAYS CLOSE
-
-# =========================
-# GET ALL PROFILES (UPDATED FOR IQR)
+        cursor.close()
 # =========================
 @app.route("/profiles", methods=["GET"])
 def get_profiles():
@@ -796,7 +762,6 @@ def get_profiles():
         cursor.close()  # ✅ ALWAYS CLOSE
 
 
-@app.route("/preview_profile", methods=["POST"])
 def preview_profile():
     """Compute median/IQR for a machine without saving the profile.
     Expects: {"machine_id": "machine_1", "frames_captured": 123}
