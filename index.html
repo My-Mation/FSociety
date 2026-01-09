@@ -195,6 +195,24 @@
             font-weight: bold;
             color: #22c55e;
             margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .delete-btn:hover {
+            background: #dc2626;
         }
         
         .profile-detail {
@@ -299,6 +317,10 @@
                     <span class="info-value" id="det-conf">--</span>
                 </div>
                 <div class="info-row">
+                    <span class="info-label">Detect Confidence:</span>
+                    <span class="info-value" id="det-detect-conf">--</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">Anomaly:</span>
                     <span class="info-value" id="det-anomaly">--</span>
                 </div>
@@ -340,6 +362,10 @@
         let calibrationFrameCount = 0;
         let calibrationValidFrames = 0;
         let selectedMachine = null;
+        
+        // ✅ NEW: Detection batch variables
+        let detectionBatch = [];
+        let detectionBatchTimer = 0;
         
         let calibrationCanvasCtx = null;
         let detectionCanvasCtx = null;
@@ -475,27 +501,17 @@
             
             calibrationFrameCount++;
             
+            // ✅ NEW: Collect ALL frames locally, send only at the end
+            calibrationData.push({
+                amplitude,
+                dominant_freq: dominantFreq,
+                freq_confidence: freqConfidence,
+                timestamp: Date.now()
+            });
+            
+            // Count valid frames for UI
             if (amplitude >= AMPLITUDE_THRESHOLD && freqConfidence >= CONFIDENCE_THRESHOLD) {
                 calibrationValidFrames++;
-                calibrationData.push({
-                    amplitude,
-                    dominant_freq: dominantFreq,
-                    freq_confidence: freqConfidence,
-                    timestamp: Date.now()
-                });
-                
-                fetch(BACKEND_URL + '/ingest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        amplitude,
-                        dominant_freq: dominantFreq,
-                        freq_confidence: freqConfidence,
-                        timestamp: Date.now(),
-                        machine_id: selectedMachine,
-                        mode: 'calibration'
-                    })
-                }).catch(err => console.warn('Send error:', err.message));
             }
             
             document.getElementById('cal-duration').textContent = `${Math.floor(calibrationTimer)}s / ${CALIBRATION_DURATION}s`;
@@ -510,19 +526,42 @@
             if (calibrationTimer >= CALIBRATION_DURATION) {
                 stopCalibration();
             } else {
-                setTimeout(calibrationLoop, 100);  // ✅ Send every ~100ms instead of every frame
+                setTimeout(calibrationLoop, 100);
             }
         }
 
-        function stopCalibration() {
+        async function stopCalibration() {
             isCalibrating = false;
             document.getElementById('calibration-start').disabled = false;
             document.getElementById('calibration-stop').disabled = true;
             document.getElementById('calibration-timer').style.display = 'none';
             
             if (calibrationValidFrames > 0) {
-                document.getElementById('calibration-save').disabled = false;
-                updateStatus('calibration', `✅ Captured ${calibrationValidFrames} valid frames. Ready to save!`, 'success');
+                updateStatus('calibration', `📤 Uploading ${calibrationData.length} frames...`, 'info');
+                
+                try {
+                    // ✅ NEW: Send all frames as a batch
+                    const response = await fetch(BACKEND_URL + '/ingest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            frames: calibrationData,
+                            machine_id: selectedMachine,
+                            mode: 'calibration'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'calibration_batch_saved') {
+                        updateStatus('calibration', `✅ Batch uploaded! ${result.frames_inserted}/${result.frames_received} frames saved.`, 'success');
+                        document.getElementById('calibration-save').disabled = false;
+                    } else {
+                        updateStatus('calibration', `Error uploading batch: ${result.error}`, 'error');
+                    }
+                } catch (error) {
+                    updateStatus('calibration', `Error uploading: ${error.message}`, 'error');
+                }
             } else {
                 updateStatus('calibration', '⚠️ No valid frames captured. Try again with more audible sound.', 'error');
             }
@@ -597,42 +636,56 @@
             const dominantFreq = (maxIndex / frequencyData.length) * nyquist;
             const freqConfidence = maxVal / 255;
             
+            // ✅ NEW: Collect frames locally in a batch
+            detectionBatch.push({
+                amplitude,
+                dominant_freq: dominantFreq,
+                freq_confidence: freqConfidence,
+                timestamp: Date.now()
+            });
+            
             document.getElementById('det-freq').textContent = dominantFreq.toFixed(1) + ' Hz';
             document.getElementById('det-amp').textContent = amplitude.toFixed(2);
             document.getElementById('det-conf').textContent = freqConfidence.toFixed(3);
             
-            fetch(BACKEND_URL + '/ingest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amplitude,
-                    dominant_freq: dominantFreq,
-                    freq_confidence: freqConfidence,
-                    timestamp: Date.now(),
-                    mode: 'live'
-                })
-            })
-            .then(res => res.json())
-            .then(d => {
-                document.getElementById('det-anomaly').textContent = d.anomaly ? '⚠️ YES' : '✅ NO';
-                
-                const statusEl = document.getElementById('active-machine');
-                if (d.detected_machine) {
-                    statusEl.textContent = `🎵 ${d.detected_machine.replace('_', ' ').toUpperCase()}`;
-                    statusEl.classList.add('active');
-                } else {
-                    statusEl.textContent = 'No machine detected';
-                    statusEl.classList.remove('active');
-                }
-            })
-            .catch(err => console.warn('Detection error:', err.message));
-            
             drawWaveform(timeDomainData, detectionCanvasCtx);
-            setTimeout(detectionLoop, 100);  // ✅ Send every ~100ms instead of every frame
+            
+            // ✅ NEW: Send batch every 500ms instead of 100ms (5x reduction in requests)
+            detectionBatchTimer += 0.1;
+            if (detectionBatchTimer >= 0.5) {
+                if (detectionBatch.length > 0) {
+                    fetch(BACKEND_URL + '/ingest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            frames: detectionBatch,
+                            mode: 'live'
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(d => {
+                        const statusEl = document.getElementById('active-machine');
+                        if (d.detected_machine) {
+                            statusEl.textContent = `🎵 ${d.detected_machine.replace('_', ' ').toUpperCase()}`;
+                            statusEl.classList.add('active');
+                        } else {
+                            statusEl.textContent = 'No machine detected';
+                            statusEl.classList.remove('active');
+                        }
+                    })
+                    .catch(err => console.warn('Detection error:', err.message));
+                }
+                detectionBatch = [];
+                detectionBatchTimer = 0;
+            }
+            
+            setTimeout(detectionLoop, 100);
         }
 
         function stopDetection() {
             isRunning = false;
+            detectionBatch = [];  // ✅ NEW: Clear batch on stop
+            detectionBatchTimer = 0;
             document.getElementById('detection-start').disabled = false;
             document.getElementById('detection-stop').disabled = true;
             document.getElementById('active-machine').classList.remove('active');
@@ -656,7 +709,10 @@
                 
                 container.innerHTML = profiles.map(p => `
                     <div class="profile-card">
-                        <div class="profile-header">${p.machine_id.replace('_', ' ').toUpperCase()}</div>
+                        <div class="profile-header">
+                            ${p.machine_id.replace('_', ' ').toUpperCase()}
+                            <button class="delete-btn" onclick="deleteProfile('${p.machine_id}')">🗑️</button>
+                        </div>
                         <div class="profile-detail">
                             <span>Mean Frequency:</span>
                             <strong>${p.mean_freq} Hz</strong>
@@ -673,6 +729,31 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading profiles:', error);
+            }
+        }
+
+        async function deleteProfile(machineId) {
+            if (!confirm(`Delete profile for ${machineId.replace('_', ' ').toUpperCase()}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(BACKEND_URL + '/delete_profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machine_id: machineId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'profile_deleted') {
+                    alert(`✅ Profile deleted: ${machineId}`);
+                    loadProfiles();  // Refresh list
+                } else {
+                    alert(`❌ Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`Error deleting profile: ${error.message}`);
             }
         }
 

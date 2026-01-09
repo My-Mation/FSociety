@@ -1,0 +1,1 @@
+{"mode":"calibration","machine_id":"machine_test","store_all":true,"frames":[{"amplitude":0.0,"peaks":[],"timestamp":1620000000000},{"amplitude":0.5,"peaks":[{"freq":200,"amp":0.9}],"timestamp":1620000005000}] }
