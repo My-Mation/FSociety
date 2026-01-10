@@ -412,9 +412,16 @@
         <!-- Step 1: Load Data -->
         <div class="action-panel" id="load-panel">
             <h3 style="color: #a78bfa; margin-bottom: 15px;">Step 1: Load Session Data from Database</h3>
-            <button class="btn btn-gemini" onclick="useLatestData(event)" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <p style="color: #888; font-size: 13px; margin-bottom: 15px;">
+                Time range: <code id="time-range-display" style="color: #22c55e;">--</code>
+            </p>
+            <button class="btn btn-gemini" id="load-btn" onclick="loadSessionData()" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                📊 Load Session Data
+            </button>
+            <button class="btn btn-secondary" onclick="useLatestData()" style="margin-left: 10px;">
                 📍 Use Latest Data Range
             </button>
+            <div id="load-status" class="status-message" style="display: none;"></div>
         </div>
         
         <!-- Step 2: Send to Gemini (hidden until data loaded) -->
@@ -437,7 +444,7 @@
                     <span class="badge input">RAW DATA</span>
                 </div>
                 <div class="panel-body">
-                    <div class="json-display" id="input-json">Click "Use Latest Data Range" to fetch data from database...</div>
+                    <div class="json-display" id="input-json">Click "Load Session Data" to fetch data from database...</div>
                 </div>
             </div>
             
@@ -561,13 +568,16 @@ SESSION SUMMARY:
                 // Display session time
                 document.getElementById('session-time-display').textContent = 
                     `${formatTime(startTs)} - ${formatTime(stopTs)}`;
+                document.getElementById('time-range-display').textContent = 
+                    `${startTs} → ${stopTs}`;
                 
                 // Auto-load if requested
                 if (autoload) {
                     loadSessionData();
                 }
             } else {
-                document.getElementById('input-json').textContent = 'Click "Use Latest Data Range" to fetch data from database';
+                document.getElementById('input-json').textContent = 'Error: No session timestamps provided in URL';
+                document.getElementById('load-btn').disabled = true;
             }
         });
         
@@ -596,32 +606,30 @@ SESSION SUMMARY:
             }
         }
         
-        async function useLatestData(event) {
+        async function useLatestData() {
             // Use the new endpoint to get the latest valid time range
-            let btn = event && event.target ? event.target : document.querySelector('button[onclick*="useLatestData"]');
             try {
-                if (btn) {
-                    btn.disabled = true;
-                    btn.textContent = '⏳ Finding latest data...';
-                }
+                const btn = event.target;
+                btn.disabled = true;
+                btn.textContent = '⏳ Finding latest data...';
+                
                 const res = await fetch('/latest-data-range?duration=60');
                 const data = await res.json();
+                
                 if (!data.has_data) {
                     alert('No audio data found in database: ' + (data.message || 'Unknown error'));
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = '📍 Use Latest Data Range';
-                    }
-                    return;
-                }
-                // Redirect to the new time range
-                window.location.href = `/gemini-analysis?start=${encodeURIComponent(data.start)}&stop=${encodeURIComponent(data.stop)}&autoload=true`;
-            } catch (err) {
-                alert('Error fetching latest data range: ' + err.message);
-                if (btn) {
                     btn.disabled = false;
                     btn.textContent = '📍 Use Latest Data Range';
+                    return;
                 }
+                
+                // Redirect to the new time range
+                window.location.href = `/gemini-analysis?start=${encodeURIComponent(data.start)}&stop=${encodeURIComponent(data.stop)}&autoload=true`;
+                
+            } catch (err) {
+                alert('Error fetching latest data range: ' + err.message);
+                event.target.disabled = false;
+                event.target.textContent = '📍 Use Latest Data Range';
             }
         }
         
@@ -631,12 +639,9 @@ SESSION SUMMARY:
         }
         
         async function loadSessionData() {
-            // Update the latest-data button if it exists
-            const latestBtn = document.querySelector('button[onclick="useLatestData()"]');
-            if (latestBtn) {
-                latestBtn.disabled = true;
-                latestBtn.innerHTML = '<span class="loading-spinner"></span> Loading from database...';
-            }
+            const btn = document.getElementById('load-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Loading from database...';
             
             showLoadStatus('<span class="loading-spinner"></span> Querying database for session data...', 'loading');
             
@@ -690,17 +695,11 @@ SESSION SUMMARY:
                 const modeLabel = dataMode === 'live' ? '🟢 LIVE' : dataMode === 'calibration' ? '🟡 CALIBRATION' : '⚪ UNKNOWN';
                 
                 showLoadStatus(`✅ Data loaded successfully! Data mode: ${modeLabel}. Review below, then click "Analyze with Gemini AI"`, 'success');
-                if (latestBtn) {
-                    latestBtn.innerHTML = '✅ Data Loaded';
-                }
+                btn.innerHTML = '✅ Data Loaded';
                 
             } catch (err) {
                 // On error, silently use latest data range instead of showing error
                 console.warn('Load error, auto-redirecting to latest data:', err.message);
-                if (latestBtn) {
-                    latestBtn.disabled = false;
-                    latestBtn.innerHTML = '📍 Use Latest Data Range';
-                }
                 useLatestData();
             }
         }
@@ -923,11 +922,10 @@ SESSION SUMMARY:
         }
         
         function showLoadStatus(message, type) {
-            // load-status element removed - show in input-json instead
-            const el = document.getElementById('input-json');
-            if (el) {
-                el.innerHTML = `<div class="status-message ${type}" style="padding: 10px;">${message}</div>`;
-            }
+            const el = document.getElementById('load-status');
+            el.style.display = 'block';
+            el.className = 'status-message ' + type;
+            el.innerHTML = message;
         }
         
         function showStatus(message, type) {

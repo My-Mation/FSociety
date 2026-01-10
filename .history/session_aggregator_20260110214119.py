@@ -8,268 +8,19 @@ This module is ADDITIVE - it does NOT modify any existing tables or logic.
 
 import os
 import json
-import re
 import requests
 from datetime import datetime
 
 # Gemini API key from environment
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyAwopfQLPFjFWUPQWmPTMMVB-IkNVEK2_s')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCw5rS7ctUXvs3AVwYDphFdI-QUz_I7XdI')
 
-# FIXED: Use ONLY valid Gemini models with FULL names (confirmed by ListModels)
-# Order: cheapest/fastest first for fallback
+# Gemini Models to try (cheapest/most-likely-free first)
+# Order matters - we try each until one succeeds
 GEMINI_MODELS = [
-    "models/gemini-2.0-flash-lite",  # Fastest, most likely to succeed
-    "models/gemini-2.0-flash",       # Fast, reliable
-    "models/gemini-2.5-flash-lite",  # Newer, lite version
-    "models/gemini-2.5-flash",       # Newest flash model
+    "gemini-1.5-flash",   # most likely free
+    "gemini-1.5-pro",     # sometimes free  
+    "gemini-2.0-flash"    # usually paid-only
 ]
-
-
-# =============================================================================
-# ROBUST JSON EXTRACTION & NORMALIZATION (Safety-Critical)
-# =============================================================================
-
-def extract_json_from_text(text: str) -> tuple:
-    """
-    Extract the FIRST valid JSON object from text that may contain:
-    - Markdown fences (```json ... ```)
-    - Leading/trailing explanations
-    - Mixed text and JSON
-    
-    Returns:
-        tuple: (extracted_json_dict or None, error_message or None)
-    """
-    if not text or not text.strip():
-        return None, "Empty response"
-    
-    original_text = text
-    
-    # Step 1: Try to extract from markdown code fences
-    # Matches ```json ... ``` or ``` ... ```
-    fence_patterns = [
-        r'```json\s*([\s\S]*?)\s*```',  # ```json ... ```
-        r'```\s*([\s\S]*?)\s*```',       # ``` ... ```
-    ]
-    
-    for pattern in fence_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
-            try:
-                parsed = json.loads(match.strip())
-                if isinstance(parsed, dict):
-                    print(f"[JSON_EXTRACT] ✅ Extracted from markdown fence ({len(match)} chars)")
-                    return parsed, None
-            except json.JSONDecodeError:
-                continue
-    
-    # Step 2: Try to find JSON object directly using brace matching
-    # Find all potential JSON starts
-    json_starts = [m.start() for m in re.finditer(r'\{', text)]
-    
-    for start in json_starts:
-        # Try progressively longer substrings
-        brace_count = 0
-        end = start
-        
-        for i, char in enumerate(text[start:], start):
-            if char == '{':
-                brace_count += 1
-            elif char == '}':
-                brace_count -= 1
-                if brace_count == 0:
-                    end = i + 1
-                    break
-        
-        if end > start:
-            candidate = text[start:end]
-            try:
-                parsed = json.loads(candidate)
-                if isinstance(parsed, dict):
-                    print(f"[JSON_EXTRACT] ✅ Extracted JSON object ({len(candidate)} chars)")
-                    return parsed, None
-            except json.JSONDecodeError:
-                continue
-    
-    # Step 3: Try the whole text as JSON
-    try:
-        parsed = json.loads(text.strip())
-        if isinstance(parsed, dict):
-            print(f"[JSON_EXTRACT] ✅ Whole text is valid JSON")
-            return parsed, None
-    except json.JSONDecodeError:
-        pass
-    
-    return None, f"No valid JSON found in {len(text)} chars of text"
-
-
-def attempt_json_repair(text: str) -> tuple:
-    """
-    Attempt to repair common JSON issues:
-    - Missing closing braces
-    - Truncated arrays
-    - Trailing commas
-    
-    Returns:
-        tuple: (repaired_json_dict or None, error_message or None)
-    """
-    if not text:
-        return None, "Empty text"
-    
-    # Find the start of JSON
-    json_start = text.find('{')
-    if json_start == -1:
-        return None, "No JSON object start found"
-    
-    text = text[json_start:]
-    
-    # Count braces
-    open_braces = text.count('{')
-    close_braces = text.count('}')
-    open_brackets = text.count('[')
-    close_brackets = text.count(']')
-    
-    # Add missing closing braces/brackets
-    repaired = text
-    repaired += ']' * (open_brackets - close_brackets)
-    repaired += '}' * (open_braces - close_braces)
-    
-    # Remove trailing commas before closing braces/brackets
-    repaired = re.sub(r',\s*}', '}', repaired)
-    repaired = re.sub(r',\s*]', ']', repaired)
-    
-    try:
-        parsed = json.loads(repaired)
-        if isinstance(parsed, dict):
-            print(f"[JSON_REPAIR] ✅ Successfully repaired JSON")
-            return parsed, None
-    except json.JSONDecodeError as e:
-        return None, f"Repair failed: {str(e)}"
-    
-    return None, "Repair produced non-dict result"
-
-
-def create_fallback_response(raw_text: str, reason: str) -> dict:
-    """
-    Create a safe fallback JSON response when parsing fails.
-    Preserves the raw output for manual review.
-    """
-    safe_observation = raw_text[:300] if raw_text else "No output received"
-    safe_notes = raw_text[:500] if raw_text else "No output received"
-    
-    # Escape any problematic characters
-    safe_observation = safe_observation.replace('\n', ' ').replace('\r', '')
-    safe_notes = safe_notes.replace('\n', ' ').replace('\r', '')
-    
-    return {
-        "health_status": "WARNING",
-        "key_findings": [
-            {
-                "signal": "combined",
-                "observation": "AI response could not be parsed",
-                "interpretation": safe_observation,
-                "confidence": "LOW"
-            }
-        ],
-        "overall_severity": "MEDIUM",
-        "recommended_actions": [
-            "Review raw AI output",
-            "Check model response format"
-        ],
-        "notes": f"Parse failure: {reason}. Raw output: {safe_notes}"
-    }
-
-
-def validate_analysis_schema(data: dict) -> dict:
-    """
-    Validate and normalize the analysis response to match expected schema.
-    Fills in missing fields with safe defaults.
-    """
-    # Expected schema with defaults
-    validated = {
-        "health_status": data.get("health_status", "WARNING"),
-        "key_findings": data.get("key_findings", []),
-        "overall_severity": data.get("overall_severity", "MEDIUM"),
-        "recommended_actions": data.get("recommended_actions", []),
-        "notes": data.get("notes", "")
-    }
-    
-    # Validate health_status
-    if validated["health_status"] not in ["NORMAL", "WARNING", "CRITICAL"]:
-        validated["health_status"] = "WARNING"
-    
-    # Validate severity
-    if validated["overall_severity"] not in ["LOW", "MEDIUM", "HIGH"]:
-        validated["overall_severity"] = "MEDIUM"
-    
-    # Ensure key_findings is a list
-    if not isinstance(validated["key_findings"], list):
-        validated["key_findings"] = []
-    
-    # Ensure recommended_actions is a list
-    if not isinstance(validated["recommended_actions"], list):
-        validated["recommended_actions"] = []
-    
-    # Ensure at least one finding
-    if not validated["key_findings"]:
-        validated["key_findings"] = [{
-            "signal": "combined",
-            "observation": "Analysis completed",
-            "interpretation": "No specific findings reported",
-            "confidence": "LOW"
-        }]
-    
-    # Ensure at least one action
-    if not validated["recommended_actions"]:
-        validated["recommended_actions"] = ["Continue monitoring"]
-    
-    return validated
-
-
-def normalize_gemini_response(raw_text: str, model_name: str = "unknown") -> dict:
-    """
-    Master function to normalize any Gemini response into valid analysis JSON.
-    
-    Process:
-    1. Try direct JSON extraction
-    2. If fails, attempt repair
-    3. If repair fails, create fallback response
-    4. Always validate schema
-    
-    Args:
-        raw_text: Raw text response from Gemini
-        model_name: Name of model used (for logging)
-    
-    Returns:
-        dict: Valid analysis JSON matching expected schema
-    """
-    print(f"[NORMALIZE] Processing response from {model_name} ({len(raw_text) if raw_text else 0} chars)")
-    
-    # Step 1: Try extraction
-    extracted, extract_error = extract_json_from_text(raw_text)
-    
-    if extracted:
-        print(f"[NORMALIZE] ✅ Extraction succeeded")
-        return validate_analysis_schema(extracted)
-    
-    print(f"[NORMALIZE] ⚠️ Extraction failed: {extract_error}")
-    
-    # Step 2: Try repair
-    repaired, repair_error = attempt_json_repair(raw_text)
-    
-    if repaired:
-        print(f"[NORMALIZE] ✅ Repair succeeded")
-        return validate_analysis_schema(repaired)
-    
-    print(f"[NORMALIZE] ⚠️ Repair failed: {repair_error}")
-    
-    # Step 3: Create fallback
-    print(f"[NORMALIZE] ⚠️ Using fallback response")
-    return create_fallback_response(raw_text, f"Extract: {extract_error}; Repair: {repair_error}")
-
-
-# =============================================================================
-# GEMINI API SYSTEM PROMPT
-# =============================================================================
 
 # System prompt for Gemini
 GEMINI_SYSTEM_PROMPT = """You are an industrial machine diagnostics assistant.
@@ -310,19 +61,10 @@ SESSION SUMMARY:
 """
 
 
-# =============================================================================
-# GEMINI API CALLER WITH FALLBACK
-# =============================================================================
-
 def call_gemini_with_fallback(session_data: dict) -> dict:
     """
-    Send session data to Gemini API with model fallback and robust response parsing.
-    
-    Valid models (from ListModels API):
-    - models/gemini-2.0-flash-lite (fastest, cheapest)
-    - models/gemini-2.0-flash
-    - models/gemini-2.5-flash-lite
-    - models/gemini-2.5-flash
+    Send session data to Gemini API with multi-model fallback.
+    Tries each model in GEMINI_MODELS until one succeeds.
     
     Args:
         session_data: The aggregated session payload
@@ -342,60 +84,37 @@ def call_gemini_with_fallback(session_data: dict) -> dict:
     
     headers = {"Content-Type": "application/json"}
     
-    # FIXED: Simple payload without responseMimeType
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 512
+            "maxOutputTokens": 512,
+            "responseMimeType": "application/json"
         }
     }
     
     last_error = None
     
     for model in GEMINI_MODELS:
-        # Model already includes "models/" prefix, use v1beta endpoint
         url = (
-            f"https://generativelanguage.googleapis.com/v1beta/"
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{model}:generateContent?key={GEMINI_API_KEY}"
         )
         
         try:
             print(f"[GEMINI] Trying model: {model}")
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(url, json=payload, headers=headers, timeout=20)
             
             if response.status_code == 200:
                 result = response.json()
-                
-                # Extract raw text
-                try:
-                    raw_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                except (KeyError, IndexError) as e:
-                    last_error = f"{model}: Malformed response structure - {str(e)}"
-                    print(f"[GEMINI] ⚠️ {last_error}")
-                    continue
-                
-                print(f"[GEMINI] ✅ Got response from {model} ({len(raw_text)} chars)")
-                
-                # FIXED: Use robust normalizer instead of direct json.loads
-                analysis = normalize_gemini_response(raw_text, model)
-                
+                text = result["candidates"][0]["content"]["parts"][0]["text"]
+                print(f"[GEMINI] ✅ Success with model: {model}")
                 return {
                     "model_used": model,
-                    "analysis": analysis
+                    "analysis": json.loads(text)
                 }
             
-            # Handle specific error codes
-            if response.status_code == 400:
-                error_detail = ""
-                try:
-                    error_detail = response.json().get('error', {}).get('message', '')
-                except:
-                    pass
-                last_error = f"{model}: Invalid request (400) - {error_detail}"
-                print(f"[GEMINI] ⚠️ {last_error}")
-                continue
-            
+            # Explicit quota / permission failures - try next model
             if response.status_code in (403, 429):
                 error_detail = ""
                 try:
@@ -407,19 +126,14 @@ def call_gemini_with_fallback(session_data: dict) -> dict:
                 continue
             
             # Other errors
-            error_detail = ""
-            try:
-                error_detail = response.json().get('error', {}).get('message', response.text[:200])
-            except:
-                error_detail = response.text[:200]
-            last_error = f"{model}: HTTP {response.status_code} - {error_detail}"
+            last_error = f"{model}: HTTP {response.status_code}"
             print(f"[GEMINI] ⚠️ {last_error}")
             
         except requests.exceptions.Timeout:
-            last_error = f"{model}: request timeout (30s)"
+            last_error = f"{model}: request timeout"
             print(f"[GEMINI] ⚠️ {last_error}")
-        except requests.exceptions.ConnectionError as e:
-            last_error = f"{model}: connection error - {str(e)}"
+        except json.JSONDecodeError as e:
+            last_error = f"{model}: invalid JSON response - {str(e)}"
             print(f"[GEMINI] ⚠️ {last_error}")
         except Exception as e:
             last_error = f"{model}: exception {str(e)}"
@@ -438,6 +152,7 @@ def call_gemini_api(session_data: dict) -> dict:
     """
     result = call_gemini_with_fallback(session_data)
     return result["analysis"]
+    raise Exception(f"Failed to parse Gemini response: {str(e)}")
 
 
 def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:

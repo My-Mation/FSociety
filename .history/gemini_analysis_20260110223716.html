@@ -412,7 +412,7 @@
         <!-- Step 1: Load Data -->
         <div class="action-panel" id="load-panel">
             <h3 style="color: #a78bfa; margin-bottom: 15px;">Step 1: Load Session Data from Database</h3>
-            <button class="btn btn-gemini" onclick="useLatestData(event)" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <button class="btn btn-gemini" onclick="useLatestData()" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
                 📍 Use Latest Data Range
             </button>
         </div>
@@ -596,32 +596,30 @@ SESSION SUMMARY:
             }
         }
         
-        async function useLatestData(event) {
+        async function useLatestData() {
             // Use the new endpoint to get the latest valid time range
-            let btn = event && event.target ? event.target : document.querySelector('button[onclick*="useLatestData"]');
             try {
-                if (btn) {
-                    btn.disabled = true;
-                    btn.textContent = '⏳ Finding latest data...';
-                }
+                const btn = event.target;
+                btn.disabled = true;
+                btn.textContent = '⏳ Finding latest data...';
+                
                 const res = await fetch('/latest-data-range?duration=60');
                 const data = await res.json();
+                
                 if (!data.has_data) {
                     alert('No audio data found in database: ' + (data.message || 'Unknown error'));
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = '📍 Use Latest Data Range';
-                    }
-                    return;
-                }
-                // Redirect to the new time range
-                window.location.href = `/gemini-analysis?start=${encodeURIComponent(data.start)}&stop=${encodeURIComponent(data.stop)}&autoload=true`;
-            } catch (err) {
-                alert('Error fetching latest data range: ' + err.message);
-                if (btn) {
                     btn.disabled = false;
                     btn.textContent = '📍 Use Latest Data Range';
+                    return;
                 }
+                
+                // Redirect to the new time range
+                window.location.href = `/gemini-analysis?start=${encodeURIComponent(data.start)}&stop=${encodeURIComponent(data.stop)}&autoload=true`;
+                
+            } catch (err) {
+                alert('Error fetching latest data range: ' + err.message);
+                event.target.disabled = false;
+                event.target.textContent = '📍 Use Latest Data Range';
             }
         }
         
@@ -690,17 +688,11 @@ SESSION SUMMARY:
                 const modeLabel = dataMode === 'live' ? '🟢 LIVE' : dataMode === 'calibration' ? '🟡 CALIBRATION' : '⚪ UNKNOWN';
                 
                 showLoadStatus(`✅ Data loaded successfully! Data mode: ${modeLabel}. Review below, then click "Analyze with Gemini AI"`, 'success');
-                if (latestBtn) {
-                    latestBtn.innerHTML = '✅ Data Loaded';
-                }
+                btn.innerHTML = '✅ Data Loaded';
                 
             } catch (err) {
                 // On error, silently use latest data range instead of showing error
                 console.warn('Load error, auto-redirecting to latest data:', err.message);
-                if (latestBtn) {
-                    latestBtn.disabled = false;
-                    latestBtn.innerHTML = '📍 Use Latest Data Range';
-                }
                 useLatestData();
             }
         }

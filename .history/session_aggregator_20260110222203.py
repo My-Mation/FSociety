@@ -434,10 +434,41 @@ def call_gemini_with_fallback(session_data: dict) -> dict:
 def call_gemini_api(session_data: dict) -> dict:
     """
     DEPRECATED: Use call_gemini_with_fallback() instead.
+                    pass
+                last_error = f"{model}: quota/permission denied ({response.status_code}) {error_detail}"
+                print(f"[GEMINI] ⚠️ {last_error}")
+                continue
+            
+            # Other errors
+            error_detail = ""
+            try:
+                error_detail = response.json().get('error', {}).get('message', response.text[:200])
+            except:
+                error_detail = response.text[:200]
+            last_error = f"{model}: HTTP {response.status_code} - {error_detail}"
+            print(f"[GEMINI] ⚠️ {last_error}")
+            
+        except requests.exceptions.Timeout:
+            last_error = f"{model}: request timeout"
+            print(f"[GEMINI] ⚠️ {last_error}")
+        except Exception as e:
+            last_error = f"{model}: exception {str(e)}"
+            print(f"[GEMINI] ⚠️ {last_error}")
+    
+    # If ALL models fail
+    raise RuntimeError(
+        f"All Gemini models unavailable. Last error: {last_error}"
+    )
+
+
+def call_gemini_api(session_data: dict) -> dict:
+    """
+    DEPRECATED: Use call_gemini_with_fallback() instead.
     Kept for backward compatibility.
     """
     result = call_gemini_with_fallback(session_data)
     return result["analysis"]
+    raise Exception(f"Failed to parse Gemini response: {str(e)}")
 
 
 def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
