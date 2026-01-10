@@ -85,17 +85,42 @@ def ensure_db_schema():
         if 'peaks' not in cols:
             cur.execute("ALTER TABLE raw_audio ADD COLUMN peaks JSONB;")
 
-        # Create machine_profiles table
+        # Create machine_profiles table with freq_bands for multi-band detection
         cur.execute("""
         CREATE TABLE IF NOT EXISTS machine_profiles (
             machine_id VARCHAR(50) PRIMARY KEY,
             median_freq FLOAT NOT NULL,
             iqr_low FLOAT NOT NULL,
             iqr_high FLOAT NOT NULL,
+            freq_bands JSONB,
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         );
         """)
+        
+        # Ensure freq_bands column exists (for existing databases)
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='machine_profiles'")
+        profile_cols = {r[0] for r in cur.fetchall()}
+        if 'freq_bands' not in profile_cols:
+            cur.execute("ALTER TABLE machine_profiles ADD COLUMN freq_bands JSONB;")
+
+        # Create esp32_data table for ESP32 sensor data
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS esp32_data (
+            id SERIAL PRIMARY KEY,
+            device_id VARCHAR(50),
+            timestamp TIMESTAMP DEFAULT NOW(),
+            vibration FLOAT,
+            event_count INTEGER,
+            gas_raw FLOAT,
+            gas_status VARCHAR(20),
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """)
+        
+        # Create indexes for esp32_data
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_esp32_data_device_id ON esp32_data(device_id);")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_esp32_data_timestamp ON esp32_data(timestamp);")
 
         # Create indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_raw_audio_timestamp ON raw_audio(timestamp);")
@@ -349,6 +374,24 @@ def index():
     return send_file(os.path.join(BASE_DIR, "index.html"))
 
 
+@app.route("/esp32")
+def esp32_dashboard():
+    """Serve ESP32 sensor monitoring dashboard"""
+    return send_file(os.path.join(BASE_DIR, "esp32_dashboard.html"))
+
+
+@app.route("/esp32_style.css")
+def esp32_style():
+    """Serve ESP32 dashboard CSS"""
+    return send_file(os.path.join(BASE_DIR, "esp32_style.css"))
+
+
+@app.route("/esp32_app.js")
+def esp32_app():
+    """Serve ESP32 dashboard JavaScript"""
+    return send_file(os.path.join(BASE_DIR, "esp32_app.js"))
+
+
 @app.route("/ingest_batch", methods=["POST"])
 def ingest_batch():
     """Accept large batch payloads and enqueue for background processing.
@@ -545,15 +588,20 @@ def ingest():
         cursor.close()  # ✅ ALWAYS CLOSE
 
 # =========================
-# MULTI-MACHINE IDENTIFICATION (UPDATED)
+# MULTI-MACHINE IDENTIFICATION (MULTI-BAND MATCHING)
 # =========================
+# Minimum amplitude threshold for peaks to be considered in detection
+MIN_PEAK_AMP = 0.15
+# Minimum number of frequency bands that must match for detection
+MIN_BAND_MATCHES = 2
+
 def identify_machines(peaks_list):
     """
-    Match detected peaks to machine profiles.
-    Returns list of machine IDs currently running.
+    Match detected peaks to machine profiles using multi-band matching.
+    A machine is detected ONLY if ≥2 frequency bands match in the same frame.
     
     Args:
-        peaks_list: List of {freq, amp} for a single frame
+        peaks_list: List of {freq, amp} for a single frame (should be top 3-5 peaks)
     
     Returns:
         List of machine_ids detected in this frame
@@ -564,42 +612,55 @@ def identify_machines(peaks_list):
     cursor = conn.cursor()
     
     try:
-        # Fetch all machine profiles
+        # Fetch all machine profiles with freq_bands
         cursor.execute(
-            "SELECT machine_id, median_freq, iqr_low, iqr_high FROM machine_profiles ORDER BY machine_id"
+            "SELECT machine_id, freq_bands, iqr_low, iqr_high FROM machine_profiles ORDER BY machine_id"
         )
         profiles = cursor.fetchall()
 
         if not profiles:
             return []
 
-        # For each peak, find matching machine(s)
         detected_machines = set()
 
-        for peak in peaks_list:
-            freq = peak.get("freq")
-            if not freq or freq <= 0:
-                continue
-
-            # Find best matching machine profile
-            best_match = None
-            best_distance = float('inf')
-
-            for profile in profiles:
-                machine_id, median_freq, iqr_low, iqr_high = profile
-
-                # Check if frequency is within IQR bounds
-                if iqr_low <= freq <= iqr_high:
-                    # Distance from median (prefer closer matches)
-                    distance = abs(freq - median_freq)
+        for machine_id, freq_bands, iqr_low, iqr_high in profiles:
+            # If freq_bands exists, use multi-band matching (new method)
+            if freq_bands and len(freq_bands) > 0:
+                match_count = 0
+                
+                for band in freq_bands:
+                    band_low = band.get("low", 0)
+                    band_high = band.get("high", 0)
                     
-                    if distance < best_distance:
-                        best_distance = distance
-                        best_match = machine_id
-
-            # Only assign if match found
-            if best_match:
-                detected_machines.add(best_match)
+                    # Check if any peak matches this band
+                    for peak in peaks_list:
+                        freq = peak.get("freq")
+                        amp = peak.get("amp", 0)
+                        
+                        # Skip weak peaks
+                        if not freq or freq <= 0 or amp < MIN_PEAK_AMP:
+                            continue
+                        
+                        if band_low <= freq <= band_high:
+                            match_count += 1
+                            break  # One peak per band is enough
+                
+                # REQUIRE ≥2 band matches for detection
+                if match_count >= MIN_BAND_MATCHES:
+                    detected_machines.add(machine_id)
+            
+            # Fallback to legacy IQR matching (for old profiles without freq_bands)
+            elif iqr_low is not None and iqr_high is not None:
+                for peak in peaks_list:
+                    freq = peak.get("freq")
+                    amp = peak.get("amp", 0)
+                    
+                    if not freq or freq <= 0 or amp < MIN_PEAK_AMP:
+                        continue
+                    
+                    if iqr_low <= freq <= iqr_high:
+                        detected_machines.add(machine_id)
+                        break
 
         return list(detected_machines)
 
@@ -607,12 +668,18 @@ def identify_machines(peaks_list):
         cursor.close()
 
 # =========================
-# SAVE CALIBRATION PROFILE (UPDATED FOR MULTI-PEAK)
+# SAVE CALIBRATION PROFILE (MULTI-BAND CLUSTERING)
 # =========================
+# Bin size for frequency clustering (Hz)
+FREQ_BIN_SIZE = 15
+# Minimum samples per cluster to be considered valid
+MIN_CLUSTER_SAMPLES = 15
+
 @app.route("/save_profile", methods=["POST"])
 def save_profile():
     """
-    Analyze calibration data and save machine profile using IQR.
+    Analyze calibration data and save machine profile with multiple frequency bands.
+    Uses clustering to identify harmonic frequencies.
     Expects: {"machine_id": "machine_1"}
     """
     cursor = conn.cursor()
@@ -624,14 +691,14 @@ def save_profile():
         if not machine_id:
             return jsonify({"error": "machine_id required"}), 400
 
-        # ✅ 1. FETCH CALIBRATION DATA (THIS WAS MISSING)
+        # 1. FETCH CALIBRATION DATA (all peaks, not just dominant)
         cursor.execute(
             """
-            SELECT dominant_freq, peaks
+            SELECT peaks
             FROM raw_audio
             WHERE machine_id = %s AND mode = 'calibration'
             ORDER BY timestamp DESC
-            LIMIT 2000
+            LIMIT 3000
             """,
             (machine_id,)
         )
@@ -640,56 +707,107 @@ def save_profile():
         if not rows:
             return jsonify({"error": "No calibration data found"}), 400
 
-        # ✅ 2. EXTRACT FREQUENCIES
-        frequencies = []
-        for dom, peaks in rows:
+        # 2. EXTRACT ALL FREQUENCIES FROM TOP PEAKS
+        all_frequencies = []
+        for (peaks,) in rows:
             if peaks:
-                for p in peaks:
-                    if isinstance(p, dict):
-                        f = p.get("freq")
-                        if f and f > 0:
-                            frequencies.append(f)
-            elif dom and dom > 0:
-                frequencies.append(dom)
+                # Sort peaks by amplitude (descending) and take top 5
+                sorted_peaks = sorted(
+                    [p for p in peaks if isinstance(p, dict) and p.get("freq", 0) > 0],
+                    key=lambda x: x.get("amp", 0),
+                    reverse=True
+                )[:5]
+                
+                for p in sorted_peaks:
+                    freq = p.get("freq")
+                    amp = p.get("amp", 0)
+                    if freq and freq > 0 and amp >= 0.1:  # Only include peaks with reasonable amplitude
+                        all_frequencies.append(freq)
 
-        if len(frequencies) < 10:
+        if len(all_frequencies) < 20:
             return jsonify({
-                "error": f"Not enough valid frequencies ({len(frequencies)} < 10)"
+                "error": f"Not enough valid frequencies ({len(all_frequencies)} < 20)"
             }), 400
 
-        frequencies.sort()
+        # 3. CLUSTER FREQUENCIES INTO BINS
+        clusters = {}
+        for freq in all_frequencies:
+            # Round to nearest bin
+            bucket = round(freq / FREQ_BIN_SIZE) * FREQ_BIN_SIZE
+            clusters.setdefault(bucket, []).append(freq)
 
-        # ✅ 3. COMPUTE MEDIAN + IQR
+        # 4. BUILD FREQUENCY BANDS FROM SIGNIFICANT CLUSTERS
+        freq_bands = []
+        for bucket, freqs in sorted(clusters.items()):
+            if len(freqs) < MIN_CLUSTER_SAMPLES:
+                continue  # Skip sparse clusters
+            
+            freqs_sorted = sorted(freqs)
+            n = len(freqs_sorted)
+            
+            # Compute quartiles for this cluster
+            q1 = freqs_sorted[n // 4]
+            q3 = freqs_sorted[3 * n // 4]
+            center = sum(freqs_sorted) / n
+            
+            # IQR-based bounds for this band
+            iqr = q3 - q1
+            band_low = max(0, q1 - 0.5 * iqr)
+            band_high = q3 + 0.5 * iqr
+            
+            freq_bands.append({
+                "center": round(center, 2),
+                "low": round(band_low, 2),
+                "high": round(band_high, 2),
+                "samples": n
+            })
+
+        # Limit to top 5 most significant bands (by sample count)
+        freq_bands = sorted(freq_bands, key=lambda x: x["samples"], reverse=True)[:5]
+        freq_bands = sorted(freq_bands, key=lambda x: x["center"])  # Sort by frequency
+
+        if len(freq_bands) < 1:
+            return jsonify({
+                "error": "Could not identify any frequency bands from calibration data"
+            }), 400
+
+        # 5. COMPUTE OVERALL MEDIAN + IQR (for backward compatibility)
+        all_frequencies.sort()
+        n_total = len(all_frequencies)
+        
         def percentile(vals, p):
             return vals[int(p * (len(vals) - 1))]
 
-        median_freq = percentile(frequencies, 0.5)
-        q1 = percentile(frequencies, 0.25)
-        q3 = percentile(frequencies, 0.75)
-
+        median_freq = percentile(all_frequencies, 0.5)
+        q1 = percentile(all_frequencies, 0.25)
+        q3 = percentile(all_frequencies, 0.75)
         iqr = q3 - q1
         iqr_low = max(0, q1 - 0.5 * iqr)
         iqr_high = q3 + 0.5 * iqr
 
         print(f"\n=== PROFILE CREATED: {machine_id} ===")
-        print(f"Frames analyzed: {len(frequencies)}")
+        print(f"Total frequencies analyzed: {n_total}")
         print(f"Median frequency: {median_freq:.2f} Hz")
-        print(f"IQR range: {iqr_low:.2f} – {iqr_high:.2f} Hz")
+        print(f"Overall IQR range: {iqr_low:.2f} – {iqr_high:.2f} Hz")
+        print(f"Frequency bands detected: {len(freq_bands)}")
+        for i, band in enumerate(freq_bands):
+            print(f"  Band {i+1}: {band['low']:.1f} – {band['high']:.1f} Hz (center: {band['center']:.1f}, samples: {band['samples']})")
 
-        # ✅ 4. SAVE PROFILE (ONLY AFTER COMPUTATION)
+        # 6. SAVE PROFILE WITH FREQ_BANDS
         cursor.execute(
             """
             INSERT INTO machine_profiles
-                (machine_id, median_freq, iqr_low, iqr_high, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, NOW(), NOW())
+                (machine_id, median_freq, iqr_low, iqr_high, freq_bands, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
             ON CONFLICT (machine_id)
             DO UPDATE SET
                 median_freq = EXCLUDED.median_freq,
                 iqr_low = EXCLUDED.iqr_low,
                 iqr_high = EXCLUDED.iqr_high,
+                freq_bands = EXCLUDED.freq_bands,
                 updated_at = NOW()
             """,
-            (machine_id, median_freq, iqr_low, iqr_high)
+            (machine_id, median_freq, iqr_low, iqr_high, psycopg2.extras.Json(freq_bands))
         )
         conn.commit()
 
@@ -700,12 +818,15 @@ def save_profile():
             "iqr": round(iqr, 2),
             "iqr_low": round(iqr_low, 2),
             "iqr_high": round(iqr_high, 2),
-            "frames_used": len(frequencies)
+            "freq_bands": freq_bands,
+            "bands_count": len(freq_bands),
+            "frames_used": n_total
         })
 
     except Exception as e:
         conn.rollback()
         print("[ERROR] SAVE_PROFILE ERROR:", str(e))
+        traceback.print_exc()
         return jsonify({"error": "server error"}), 500
 
     finally:
@@ -719,7 +840,7 @@ def get_profiles():
     try:
         cursor.execute(
             """
-            SELECT machine_id, median_freq, iqr_low, iqr_high, created_at
+            SELECT machine_id, median_freq, iqr_low, iqr_high, freq_bands, created_at
             FROM machine_profiles
             ORDER BY machine_id
             """
@@ -732,7 +853,8 @@ def get_profiles():
             median_freq = row[1]
             iqr_low = row[2]
             iqr_high = row[3]
-            created_at = row[4]
+            freq_bands = row[4]
+            created_at = row[5]
 
             # Safely round numeric values that may be NULL in DB
             def safe_round(val):
@@ -748,6 +870,8 @@ def get_profiles():
                 "iqr_low": safe_round(iqr_low),
                 "iqr_high": safe_round(iqr_high),
                 "iqr": iqr_val,
+                "freq_bands": freq_bands if freq_bands else [],
+                "bands_count": len(freq_bands) if freq_bands else 0,
                 "created_at": str(created_at) if created_at is not None else None
             })
 
@@ -927,6 +1051,176 @@ def export_raw():
 
     finally:
         cursor.close()  # ✅ ALWAYS CLOSE
+
+# =========================
+# ESP32 SENSOR DATA INGESTION
+# =========================
+@app.route("/ingest_esp32", methods=["POST"])
+def ingest_esp32():
+    """Dedicated endpoint for ESP32 sensor data (vibration, gas, etc.)"""
+    cursor = conn.cursor()
+    
+    try:
+        data = request.get_json(force=True)
+        
+        device_id   = data.get("device_id")
+        vibration   = data.get("vibration")
+        event_count = data.get("event_count")
+        gas_raw     = data.get("gas_raw")
+        gas_status  = data.get("gas_status")
+        
+        if not device_id:
+            return jsonify({"error": "device_id required"}), 400
+        
+        cursor.execute(
+            """
+            INSERT INTO esp32_data
+            (device_id, timestamp, vibration, event_count, gas_raw, gas_status)
+            VALUES (%s, NOW(), %s, %s, %s, %s)
+            """,
+            (device_id, vibration, event_count, gas_raw, gas_status)
+        )
+        conn.commit()
+        
+        print(f"[OK] ESP32 STORED: device={device_id}, vibration={vibration}, gas={gas_raw} ({gas_status})")
+        
+        return jsonify({"status": "stored"}), 200
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] ESP32 INGEST ERROR: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        cursor.close()
+
+
+@app.route("/esp32_data", methods=["GET"])
+def get_esp32_data():
+    """Retrieve recent ESP32 sensor data"""
+    cursor = conn.cursor()
+    
+    try:
+        limit = request.args.get("limit", default=100, type=int)
+        device_id = request.args.get("device_id", default=None, type=str)
+        
+        if device_id:
+            cursor.execute(
+                """
+                SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status
+                FROM esp32_data
+                WHERE device_id = %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+                """,
+                (device_id, limit)
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status
+                FROM esp32_data
+                ORDER BY timestamp DESC
+                LIMIT %s
+                """,
+                (limit,)
+            )
+        
+        rows = cursor.fetchall()
+        data = [
+            {
+                "id": r[0],
+                "device_id": r[1],
+                "timestamp": str(r[2]) if r[2] else None,
+                "vibration": r[3],
+                "event_count": r[4],
+                "gas_raw": r[5],
+                "gas_status": r[6]
+            }
+            for r in rows
+        ]
+        
+        return jsonify(data)
+        
+    except Exception as e:
+        print(f"[ERROR] ESP32 GET ERROR: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        cursor.close()
+
+
+@app.route("/latest_esp32", methods=["GET"])
+def latest_esp32():
+    """Get the most recent ESP32 sensor reading"""
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            """
+            SELECT device_id, vibration, event_count, gas_raw, gas_status, timestamp
+            FROM esp32_data
+            ORDER BY timestamp DESC
+            LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+        
+        if row:
+            return jsonify({
+                "device_id": row[0],
+                "vibration": row[1],
+                "event_count": row[2],
+                "gas_raw": row[3],
+                "gas_status": row[4],
+                "timestamp": str(row[5]) if row[5] else None
+            })
+        else:
+            return jsonify({
+                "device_id": None,
+                "vibration": 0,
+                "event_count": 0,
+                "gas_raw": 0,
+                "gas_status": "UNKNOWN"
+            })
+            
+    except Exception as e:
+        print(f"[ERROR] LATEST_ESP32 ERROR: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        cursor.close()
+
+
+@app.route("/live_status", methods=["GET"])
+def live_status():
+    """Get current machine detection status"""
+    try:
+        # Get all machines from profiles
+        cursor = conn.cursor()
+        cursor.execute("SELECT machine_id FROM machine_profiles")
+        all_machines = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        
+        # Get stable machines from detection history
+        stable = get_stable_machines(all_machines)
+        
+        # Get raw detected machines from last batch (from detection_history)
+        detected = []
+        for machine_id in all_machines:
+            if machine_id in detection_history and len(detection_history[machine_id]) > 0:
+                if detection_history[machine_id][-1] == 1:
+                    detected.append(machine_id)
+        
+        return jsonify({
+            "detected": sorted(detected),
+            "stable": sorted(stable)
+        })
+        
+    except Exception as e:
+        print(f"[ERROR] LIVE_STATUS ERROR: {str(e)}")
+        return jsonify({"detected": [], "stable": []})
 
 # =========================
 # RUN
