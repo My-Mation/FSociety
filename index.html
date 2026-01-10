@@ -12,10 +12,11 @@
         }
         
         body {
-            background: #0f1419;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
             color: #e0e0e0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             padding: 20px;
+            min-height: 100vh;
         }
         
         .container {
@@ -26,7 +27,13 @@
         h1 {
             text-align: center;
             margin-bottom: 30px;
-            color: #22c55e;
+            background: linear-gradient(90deg, #22c55e, #3b82f6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 42px;
+            font-weight: 800;
+            text-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
         }
         
         .tabs {
@@ -91,10 +98,12 @@
         }
         
         .control-panel {
-            background: #1a2332;
+            background: linear-gradient(145deg, #1a2332, #1f2937);
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
+            border: 1px solid rgba(34, 197, 94, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
         
         .info-row {
@@ -152,8 +161,10 @@
             width: 100%;
             height: 300px;
             background: #000;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
+            border: 2px solid rgba(34, 197, 94, 0.2);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
         
         .status {
@@ -556,6 +567,127 @@
         }
         .gas-limits .safe-limit { background: #052e16; color: #22c55e; }
         .gas-limits .hazard-limit { background: #450a0a; color: #ef4444; }
+        
+        /* ========== CHART STYLES ========== */
+        .chart-container {
+            background: #0f1419;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #22c55e, transparent);
+        }
+        .chart-title {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .mini-chart {
+            height: 80px;
+            position: relative;
+        }
+        .spectrum-chart {
+            height: 150px;
+            position: relative;
+        }
+        .history-chart {
+            height: 120px;
+            position: relative;
+        }
+        
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #1a2332, #1f2937);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            border-color: #22c55e;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+            transform: translateY(-2px);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #22c55e;
+        }
+        .stat-unit {
+            font-size: 12px;
+            color: #666;
+            margin-left: 4px;
+        }
+        
+        /* Progress bars */
+        .progress-bar {
+            height: 8px;
+            background: #1a2332;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #10b981);
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+        
+        /* Frequency bands visualization */
+        .freq-bands {
+            display: flex;
+            gap: 4px;
+            margin-top: 10px;
+            height: 60px;
+            align-items: flex-end;
+        }
+        .freq-band {
+            flex: 1;
+            background: linear-gradient(180deg, #22c55e, #166534);
+            border-radius: 3px 3px 0 0;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .freq-band:hover {
+            background: linear-gradient(180deg, #3b82f6, #1e40af);
+            transform: scaleY(1.1);
+        }
+        .freq-band-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #666;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -594,19 +726,40 @@
                     <span class="info-value" id="cal-duration">0s / 60s</span>
                 </div>
                 
-                <!-- Data Collection Indicators -->
-                <div class="data-collection">
-                    <div class="data-item" id="cal-audio-data">
-                        <div class="label">🎵 Audio Frames</div>
-                        <div class="count" id="cal-frames">0</div>
+                <!-- Data Collection Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">🎵 Audio Frames</div>
+                        <div class="stat-value" id="cal-frames">0</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cal-frames-progress" style="width: 0%;"></div>
+                        </div>
                     </div>
-                    <div class="data-item" id="cal-vibration-data">
-                        <div class="label">📳 Vibration Samples</div>
-                        <div class="count" id="cal-vib-count">0</div>
+                    <div class="stat-card">
+                        <div class="stat-label">📳 Vibration</div>
+                        <div class="stat-value" id="cal-vib-count">0</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cal-vib-progress" style="width: 0%;"></div>
+                        </div>
                     </div>
-                    <div class="data-item" id="cal-gas-data">
-                        <div class="label">💨 Gas Samples</div>
-                        <div class="count" id="cal-gas-count">0</div>
+                    <div class="stat-card">
+                        <div class="stat-label">💨 Gas Samples</div>
+                        <div class="stat-value" id="cal-gas-count">0</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cal-gas-progress" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">📊 Avg Amplitude</div>
+                        <div class="stat-value" id="cal-avg-amp">0.0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🔊 Peak Frequency</div>
+                        <div class="stat-value"><span id="cal-peak-freq">0</span><span class="stat-unit">Hz</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">⏱️ Time Remaining</div>
+                        <div class="stat-value" id="cal-time-remain">60s</div>
                     </div>
                 </div>
                 
@@ -618,10 +771,20 @@
                 </div>
             </div>
             
-            <!-- Waveform (only shown when listening) -->
+            <!-- Waveform and Spectrum (shown when listening) -->
             <div id="calibration-waveform-container" style="display:none;">
                 <h3>Live Audio Waveform:</h3>
                 <canvas id="calibration-canvas"></canvas>
+                
+                <div class="chart-container">
+                    <div class="chart-title">📊 Frequency Spectrum Analysis</div>
+                    <canvas id="calibration-spectrum" class="spectrum-chart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">📈 Amplitude History (Last 60 samples)</div>
+                    <canvas id="calibration-history" class="history-chart"></canvas>
+                </div>
             </div>
         </div>
         
@@ -689,6 +852,11 @@
                         <span class="info-label">Stable Machines:</span>
                         <span class="info-value" id="live-stable-machines">--</span>
                     </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">🔎 Detection Confidence</div>
+                        <canvas id="live-confidence-chart" class="mini-chart"></canvas>
+                    </div>
                 </div>
                 
                 <!-- B. Gas / Air Quality -->
@@ -707,6 +875,11 @@
                     <div class="gas-limits">
                         <span class="safe-limit">Safe: &lt; 300</span>
                         <span class="hazard-limit">Hazardous: &gt; 700</span>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">📉 Gas Level History</div>
+                        <canvas id="live-gas-chart" class="mini-chart"></canvas>
                     </div>
                 </div>
                 
@@ -728,22 +901,34 @@
                         <span class="info-label">Event Count:</span>
                         <span class="info-value" id="live-event-count">0</span>
                     </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">📈 Vibration Pattern</div>
+                        <canvas id="live-vibration-chart" class="mini-chart"></canvas>
+                    </div>
                 </div>
                 
                 <!-- D. Audio Info -->
                 <div class="sensor-panel" id="panel-audio-info">
                     <h4>🎵 Audio Analysis</h4>
-                    <div class="info-row">
-                        <span class="info-label">Dominant Frequency:</span>
-                        <span class="info-value" id="live-freq">-- Hz</span>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Frequency</div>
+                            <div class="stat-value"><span id="live-freq">--</span><span class="stat-unit">Hz</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Amplitude</div>
+                            <div class="stat-value" id="live-amp">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Confidence</div>
+                            <div class="stat-value" id="live-conf">--</div>
+                        </div>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Amplitude:</span>
-                        <span class="info-value" id="live-amp">--</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Confidence:</span>
-                        <span class="info-value" id="live-conf">--</span>
+                    
+                    <div class="chart-container">
+                        <div class="chart-title">🎼 Frequency Spectrum</div>
+                        <canvas id="live-spectrum-chart" class="spectrum-chart"></canvas>
                     </div>
                 </div>
                 
@@ -751,6 +936,25 @@
                 <div class="sensor-panel waveform-panel" id="panel-waveform">
                     <h4>📊 Live Audio Waveform</h4>
                     <canvas id="live-canvas"></canvas>
+                    
+                    <div class="stats-grid" style="margin-top: 15px;">
+                        <div class="stat-card">
+                            <div class="stat-label">🔊 Peak Amplitude</div>
+                            <div class="stat-value" id="live-peak-amp">0.0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">🔽 Average Level</div>
+                            <div class="stat-value" id="live-avg-amp">0.0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">📡 Samples/sec</div>
+                            <div class="stat-value" id="live-sample-rate">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">⏱️ Running Time</div>
+                            <div class="stat-value" id="live-runtime">0s</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -809,6 +1013,23 @@
         let calibrationCanvasCtx = null;
         let liveCanvasCtx = null;
         
+        // Chart contexts
+        let calibrationSpectrumCtx = null;
+        let calibrationHistoryCtx = null;
+        let liveSpectrumCtx = null;
+        let liveConfidenceCtx = null;
+        let liveGasCtx = null;
+        let liveVibrationCtx = null;
+        
+        // Historical data for charts
+        let amplitudeHistory = [];
+        let frequencyHistory = [];
+        let gasHistory = [];
+        let vibrationHistory = [];
+        let confidenceHistory = [];
+        let liveStartTime = 0;
+        let liveSampleCount = 0;
+        
         // Stored profiles cache
         let machineProfiles = {};
 
@@ -831,10 +1052,55 @@
                 calibCanvas.width = calibCanvas.offsetWidth || 800;
                 calibCanvas.height = calibCanvas.offsetHeight || 150;
             }
+            
+            // Calibration chart canvases
+            const calibSpectrum = document.getElementById('calibration-spectrum');
+            if (calibSpectrum) {
+                calibrationSpectrumCtx = calibSpectrum.getContext('2d');
+                calibSpectrum.width = calibSpectrum.offsetWidth || 800;
+                calibSpectrum.height = 150;
+            }
+            
+            const calibHistory = document.getElementById('calibration-history');
+            if (calibHistory) {
+                calibrationHistoryCtx = calibHistory.getContext('2d');
+                calibHistory.width = calibHistory.offsetWidth || 800;
+                calibHistory.height = 120;
+            }
+            
             if (liveCanvas) {
                 liveCanvasCtx = liveCanvas.getContext('2d');
                 liveCanvas.width = liveCanvas.offsetWidth || 800;
                 liveCanvas.height = liveCanvas.offsetHeight || 150;
+            }
+            
+            // Live detection chart canvases
+            const liveSpectrum = document.getElementById('live-spectrum-chart');
+            if (liveSpectrum) {
+                liveSpectrumCtx = liveSpectrum.getContext('2d');
+                liveSpectrum.width = liveSpectrum.offsetWidth || 400;
+                liveSpectrum.height = 150;
+            }
+            
+            const liveConfidence = document.getElementById('live-confidence-chart');
+            if (liveConfidence) {
+                liveConfidenceCtx = liveConfidence.getContext('2d');
+                liveConfidence.width = liveConfidence.offsetWidth || 400;
+                liveConfidence.height = 80;
+            }
+            
+            const liveGas = document.getElementById('live-gas-chart');
+            if (liveGas) {
+                liveGasCtx = liveGas.getContext('2d');
+                liveGas.width = liveGas.offsetWidth || 400;
+                liveGas.height = 80;
+            }
+            
+            const liveVibration = document.getElementById('live-vibration-chart');
+            if (liveVibration) {
+                liveVibrationCtx = liveVibration.getContext('2d');
+                liveVibration.width = liveVibration.offsetWidth || 400;
+                liveVibration.height = 80;
             }
         }
 
@@ -940,6 +1206,7 @@
             calibrationTimer = 0;
             calibrationVibrationSamples = [];
             calibrationGasSamples = [];
+            amplitudeHistory = [];  // Reset amplitude history
             
             // Update UI
             document.getElementById('cal-mode-badge').textContent = 'LISTENING';
@@ -1002,14 +1269,33 @@
                 timestamp: Date.now()
             });
             
-            // Update UI
+            // Track amplitude history for charts
+            amplitudeHistory.push(amplitude);
+            if (amplitudeHistory.length > 60) amplitudeHistory.shift();
+            
+            // Calculate average amplitude
+            const avgAmp = amplitudeHistory.reduce((a, b) => a + b, 0) / amplitudeHistory.length;
+            
+            // Update UI stats
             document.getElementById('cal-duration').textContent = `${Math.floor(calibrationTimer)}s / ${CALIBRATION_DURATION}s`;
             document.getElementById('cal-frames').textContent = calibrationFrameCount;
             document.getElementById('cal-vib-count').textContent = calibrationVibrationSamples.length;
             document.getElementById('cal-gas-count').textContent = calibrationGasSamples.length;
             document.getElementById('calibration-timer').textContent = `${Math.floor(calibrationTimer)}s`;
+            document.getElementById('cal-avg-amp').textContent = avgAmp.toFixed(1);
+            document.getElementById('cal-peak-freq').textContent = Math.round(dominantFreq);
+            document.getElementById('cal-time-remain').textContent = Math.max(0, CALIBRATION_DURATION - Math.floor(calibrationTimer)) + 's';
             
+            // Update progress bars
+            const progress = (calibrationTimer / CALIBRATION_DURATION) * 100;
+            document.getElementById('cal-frames-progress').style.width = progress + '%';
+            document.getElementById('cal-vib-progress').style.width = progress + '%';
+            document.getElementById('cal-gas-progress').style.width = progress + '%';
+            
+            // Draw visualizations
             drawWaveform(timeDomainData, calibrationCanvasCtx);
+            if (calibrationSpectrumCtx) drawSpectrum(frequencyData, calibrationSpectrumCtx, nyquist);
+            if (calibrationHistoryCtx) drawHistory(amplitudeHistory, calibrationHistoryCtx, 'Amplitude');
             
             calibrationTimer += 0.1;
             
@@ -1420,19 +1706,146 @@
         }
 
         // ==========================================
-        // HELPERS
+        // HELPERS & CHART DRAWING
         // ==========================================
         function drawWaveform(data, ctx) {
+            if (!ctx) return;
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             
-            ctx.strokeStyle = '#22c55e';
+            // Draw gradient waveform
+            const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+            gradient.addColorStop(0, '#22c55e');
+            gradient.addColorStop(0.5, '#3b82f6');
+            gradient.addColorStop(1, '#a855f7');
+            
+            ctx.strokeStyle = gradient;
             ctx.lineWidth = 2;
             ctx.beginPath();
             
             for (let i = 0; i < data.length; i++) {
                 const x = (i / data.length) * ctx.canvas.width;
                 const y = ctx.canvas.height - ((data[i] / 255) * ctx.canvas.height);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw center line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, ctx.canvas.height / 2);
+            ctx.lineTo(ctx.canvas.width, ctx.canvas.height / 2);
+            ctx.stroke();
+        }
+        
+        function drawSpectrum(frequencyData, ctx, nyquist) {
+            if (!ctx) return;
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw bars with gradient
+            const barWidth = width / frequencyData.length;
+            const gradient = ctx.createLinearGradient(0, height, 0, 0);
+            gradient.addColorStop(0, '#22c55e');
+            gradient.addColorStop(0.5, '#3b82f6');
+            gradient.addColorStop(1, '#ef4444');
+            
+            for (let i = 0; i < frequencyData.length; i++) {
+                const barHeight = (frequencyData[i] / 255) * height;
+                const x = i * barWidth;
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+            }
+            
+            // Draw frequency labels
+            ctx.fillStyle = '#666';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'left';
+            const freqStep = Math.floor(nyquist / 4);
+            for (let i = 0; i <= 4; i++) {
+                const freq = i * freqStep;
+                const x = (i / 4) * width;
+                ctx.fillText(freq + 'Hz', x + 5, height - 5);
+            }
+        }
+        
+        function drawHistory(dataArray, ctx, label = '') {
+            if (!ctx || dataArray.length === 0) return;
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Find max for scaling
+            const max = Math.max(...dataArray, 1);
+            
+            // Draw gradient line
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, '#3b82f6');
+            gradient.addColorStop(1, '#22c55e');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const x = (i / (dataArray.length - 1)) * width;
+                const y = height - ((dataArray[i] / max) * height * 0.9);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw filled area
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            const fillGradient = ctx.createLinearGradient(0, 0, 0, height);
+            fillGradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
+            fillGradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
+            ctx.fillStyle = fillGradient;
+            ctx.fill();
+            
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = (i / 4) * height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Draw max value label
+            ctx.fillStyle = '#666';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText('Max: ' + max.toFixed(1), width - 5, 12);
+        }
+        
+        function drawMiniLineChart(dataArray, ctx, color = '#22c55e', maxValue = null) {
+            if (!ctx || dataArray.length === 0) return;
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            const max = maxValue || Math.max(...dataArray, 1);
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const x = (i / Math.max(dataArray.length - 1, 1)) * width;
+                const y = height - ((dataArray[i] / max) * height * 0.9) - height * 0.05;
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.stroke();
@@ -1533,6 +1946,15 @@
             liveBatch = [];
             liveBatchTimer = 0;
             
+            // Reset tracking variables
+            amplitudeHistory = [];
+            frequencyHistory = [];
+            gasHistory = [];
+            vibrationHistory = [];
+            confidenceHistory = [];
+            liveStartTime = Date.now();
+            liveSampleCount = 0;
+            
             // Update UI
             document.getElementById('live-mode-badge').textContent = 'DETECTING';
             document.getElementById('live-mode-badge').className = 'mode-badge detecting';
@@ -1578,6 +2000,23 @@
             
             const peaks = extractTopPeaks(frequencyData, nyquist, 5);
             
+            // Track history
+            liveSampleCount++;
+            amplitudeHistory.push(amplitude);
+            if (amplitudeHistory.length > 60) amplitudeHistory.shift();
+            
+            frequencyHistory.push(dominantFreq);
+            if (frequencyHistory.length > 60) frequencyHistory.shift();
+            
+            confidenceHistory.push(freqConfidence);
+            if (confidenceHistory.length > 30) confidenceHistory.shift();
+            
+            // Calculate stats
+            const peakAmp = Math.max(...amplitudeHistory);
+            const avgAmp = amplitudeHistory.reduce((a, b) => a + b, 0) / amplitudeHistory.length;
+            const runningTime = Math.floor((Date.now() - liveStartTime) / 1000);
+            const sampleRate = Math.floor(liveSampleCount / Math.max(runningTime, 1));
+            
             // Collect frame
             liveBatch.push({
                 amplitude,
@@ -1588,14 +2027,18 @@
             });
             
             // Update audio UI
-            document.getElementById('live-freq').textContent = dominantFreq.toFixed(1) + ' Hz';
+            document.getElementById('live-freq').textContent = dominantFreq.toFixed(1);
             document.getElementById('live-amp').textContent = amplitude.toFixed(2);
             document.getElementById('live-conf').textContent = freqConfidence.toFixed(3);
+            document.getElementById('live-peak-amp').textContent = peakAmp.toFixed(1);
+            document.getElementById('live-avg-amp').textContent = avgAmp.toFixed(1);
+            document.getElementById('live-sample-rate').textContent = sampleRate;
+            document.getElementById('live-runtime').textContent = runningTime + 's';
             
-            // Draw waveform
-            if (liveCanvasCtx) {
-                drawWaveform(timeDomainData, liveCanvasCtx);
-            }
+            // Draw visualizations
+            if (liveCanvasCtx) drawWaveform(timeDomainData, liveCanvasCtx);
+            if (liveSpectrumCtx) drawSpectrum(frequencyData, liveSpectrumCtx, nyquist);
+            if (liveConfidenceCtx) drawMiniLineChart(confidenceHistory, liveConfidenceCtx, '#3b82f6', 1);
             
             // Send batch every 500ms
             liveBatchTimer += 0.1;
@@ -1693,12 +2136,20 @@
                 
                 document.getElementById('live-event-count').textContent = data.event_count || 0;
                 
+                // Track vibration history
+                vibrationHistory.push(vibValue * 100);
+                if (vibrationHistory.length > 30) vibrationHistory.shift();
+                
                 // Update gas display
                 const gasRaw = data.gas_raw || 0;
                 const gasStatus = data.gas_status || 'UNKNOWN';
                 
                 document.getElementById('live-gas-value').textContent = gasRaw;
                 document.getElementById('live-gas-status-text').textContent = gasStatus;
+                
+                // Track gas history
+                gasHistory.push(gasRaw);
+                if (gasHistory.length > 30) gasHistory.shift();
                 
                 const gasIndicator = document.getElementById('live-gas-indicator');
                 gasIndicator.className = 'gas-indicator';
@@ -1710,6 +2161,10 @@
                 } else {
                     gasIndicator.classList.add('safe');
                 }
+                
+                // Update charts
+                if (liveGasCtx) drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 1000);
+                if (liveVibrationCtx) drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#ef4444', 100);
                 
             } catch (err) {
                 console.warn('ESP32 fetch error:', err);
