@@ -596,8 +596,10 @@
             font-weight: bold;
         }
         .mini-chart {
+            width: 100%;
             height: 80px;
             position: relative;
+            display: block;
         }
         .spectrum-chart {
             height: 150px;
@@ -903,7 +905,7 @@
                     </div>
                     
                     <div class="chart-container">
-                        <div class="chart-title">📈 Vibration Pattern</div>
+                        <div class="chart-title">📈 Vibration Pattern (Higher = More Activity)</div>
                         <canvas id="live-vibration-chart" class="mini-chart"></canvas>
                     </div>
                 </div>
@@ -1092,8 +1094,9 @@
             const liveGas = document.getElementById('live-gas-chart');
             if (liveGas) {
                 liveGasCtx = liveGas.getContext('2d');
-                liveGas.width = liveGas.offsetWidth || 400;
-                liveGas.height = 80;
+                // Force minimum dimensions to ensure chart is visible
+                liveGas.width = Math.max(liveGas.offsetWidth, 400);
+                liveGas.height = Math.max(liveGas.offsetHeight, 80);
             }
             
             const liveVibration = document.getElementById('live-vibration-chart');
@@ -1829,26 +1832,120 @@
             ctx.fillText('Max: ' + max.toFixed(1), width - 5, 12);
         }
         
-        function drawMiniLineChart(dataArray, ctx, color = '#22c55e', maxValue = null) {
+        function drawMiniLineChart(dataArray, ctx, color = '#22c55e', maxValue = null, chartType = null) {
             if (!ctx || dataArray.length === 0) return;
-            const width = ctx.canvas.width;
-            const height = ctx.canvas.height;
             
+            // Ensure canvas has proper dimensions
+            const canvas = ctx.canvas;
+            if (canvas.width === 0 || canvas.height === 0) {
+                canvas.width = Math.max(canvas.offsetWidth, canvas.parentElement?.offsetWidth || 400);
+                canvas.height = Math.max(canvas.offsetHeight, 80);
+            }
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
             const max = maxValue || Math.max(...dataArray, 1);
+            const leftPadding = 35; // Space for Y-axis labels
+            const rightPadding = 5;
+            const topPadding = 5;
+            const bottomPadding = 15; // Space for X-axis label
+            const graphWidth = width - leftPadding - rightPadding;
+            const graphHeight = height - topPadding - bottomPadding;
             
+            // Draw gas danger zones if this is a gas chart
+            if (chartType === 'gas') {
+                // Red zone (hazardous > 700)
+                const hazardY = topPadding + graphHeight - ((GAS_HAZARD_LIMIT / max) * graphHeight);
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                ctx.fillRect(leftPadding, topPadding, graphWidth, hazardY - topPadding);
+                
+                // Yellow zone (warning 300-700)
+                const safeY = topPadding + graphHeight - ((GAS_SAFE_LIMIT / max) * graphHeight);
+                ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
+                ctx.fillRect(leftPadding, hazardY, graphWidth, safeY - hazardY);
+                
+                // Green zone (safe < 300)
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.1)';
+                ctx.fillRect(leftPadding, safeY, graphWidth, topPadding + graphHeight - safeY);
+            }
+            
+            // Draw grid lines for reference
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const y = topPadding + (graphHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(leftPadding, y);
+                ctx.lineTo(width - rightPadding, y);
+                ctx.stroke();
+            }
+            
+            // Draw filled area first
+            ctx.beginPath();
+            for (let i = 0; i < dataArray.length; i++) {
+                const x = leftPadding + (i / Math.max(dataArray.length - 1, 1)) * graphWidth;
+                const y = topPadding + graphHeight - ((dataArray[i] / max) * graphHeight);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            // Complete the fill path
+            ctx.lineTo(leftPadding + graphWidth, topPadding + graphHeight);
+            ctx.lineTo(leftPadding, topPadding + graphHeight);
+            ctx.closePath();
+            ctx.fillStyle = color + '33'; // 20% opacity
+            ctx.fill();
+            
+            // Draw the line on top
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            
             for (let i = 0; i < dataArray.length; i++) {
-                const x = (i / Math.max(dataArray.length - 1, 1)) * width;
-                const y = height - ((dataArray[i] / max) * height * 0.9) - height * 0.05;
+                const x = leftPadding + (i / Math.max(dataArray.length - 1, 1)) * graphWidth;
+                const y = topPadding + graphHeight - ((dataArray[i] / max) * graphHeight);
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.stroke();
+            
+            // ---- Y-axis labels ----
+            ctx.fillStyle = '#888';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            
+            // Top (max)
+            ctx.fillText(Math.round(max).toString(), leftPadding - 4, topPadding + 10);
+            
+            // Middle
+            ctx.fillText(Math.round(max / 2).toString(), leftPadding - 4, topPadding + graphHeight / 2 + 3);
+            
+            // Bottom (zero)
+            ctx.fillText('0', leftPadding - 4, topPadding + graphHeight - 2);
+            
+            // ---- X-axis label ----
+            ctx.fillStyle = '#555';
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('Time →', leftPadding + graphWidth / 2, height - 2);
+            
+            // ---- Current value label (top right) ----
+            if (dataArray.length > 0) {
+                const lastValue = dataArray[dataArray.length - 1];
+                ctx.fillStyle = color;
+                ctx.font = 'bold 10px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(lastValue).toString(), width - rightPadding, topPadding + 10);
+            }
+            
+            // ---- Chart type specific labels ----
+            if (chartType === 'confidence') {
+                ctx.fillStyle = '#888';
+                ctx.font = '9px monospace';
+                ctx.textAlign = 'right';
+                ctx.fillText('(0-1)', width - rightPadding, height - 2);
+            }
         }
 
         // ==========================================
@@ -1920,7 +2017,16 @@
             
             // Initialize canvas when switching to live detection
             if (tab === 'livedetection') {
-                setTimeout(initializeCanvases, 100);
+                setTimeout(() => {
+                    initializeCanvases();
+                    // Re-initialize gas chart specifically to ensure it's properly sized
+                    const liveGas = document.getElementById('live-gas-chart');
+                    if (liveGas && liveGas.offsetWidth > 0) {
+                        liveGasCtx = liveGas.getContext('2d');
+                        liveGas.width = Math.max(liveGas.offsetWidth, 400);
+                        liveGas.height = Math.max(liveGas.offsetHeight, 80);
+                    }
+                }, 150);
             }
         }
 
@@ -2038,7 +2144,7 @@
             // Draw visualizations
             if (liveCanvasCtx) drawWaveform(timeDomainData, liveCanvasCtx);
             if (liveSpectrumCtx) drawSpectrum(frequencyData, liveSpectrumCtx, nyquist);
-            if (liveConfidenceCtx) drawMiniLineChart(confidenceHistory, liveConfidenceCtx, '#3b82f6', 1);
+            if (liveConfidenceCtx) drawMiniLineChart(confidenceHistory, liveConfidenceCtx, '#3b82f6', 1, 'confidence');
             
             // Send batch every 500ms
             liveBatchTimer += 0.1;
@@ -2115,29 +2221,33 @@
                 const res = await fetch(BACKEND_URL + '/latest_esp32');
                 const data = await res.json();
                 
-                // Update vibration display
+                // Update vibration display (reversed logic - 0 means ON, >0 means OFF)
                 const vibValue = data.vibration || 0;
-                document.getElementById('live-vibration-value').textContent = vibValue > 0 ? 'ON' : 'OFF';
+                document.getElementById('live-vibration-value').textContent = vibValue > 0 ? 'OFF' : 'ON';
                 
-                const vibPercent = Math.min(vibValue * 100, 100);
-                document.getElementById('live-vibration-bar').style.width = vibPercent + '%';
+                // Reverse the bar: when vibValue is 0 (ON), bar should be full; when vibValue is high (OFF), bar should be low
+                const vibPercentReversed = Math.max(0, 100 - Math.min(vibValue * 100, 100));
+                document.getElementById('live-vibration-bar').style.width = vibPercentReversed + '%';
                 
+                // Reverse intensity labels too
                 const intensityEl = document.getElementById('live-vibration-intensity');
                 if (vibValue > 0.7) {
-                    intensityEl.textContent = 'HIGH';
-                    intensityEl.className = 'vibration-intensity high';
+                    // High vibValue means OFF/LOW activity
+                    intensityEl.textContent = 'LOW';
+                    intensityEl.className = 'vibration-intensity low';
                 } else if (vibValue > 0.3) {
                     intensityEl.textContent = 'MEDIUM';
                     intensityEl.className = 'vibration-intensity medium';
                 } else {
-                    intensityEl.textContent = 'LOW';
-                    intensityEl.className = 'vibration-intensity low';
+                    // Low vibValue means ON/HIGH activity
+                    intensityEl.textContent = 'HIGH';
+                    intensityEl.className = 'vibration-intensity high';
                 }
                 
                 document.getElementById('live-event-count').textContent = data.event_count || 0;
                 
-                // Track vibration history
-                vibrationHistory.push(vibValue * 100);
+                // Track vibration history (reversed for graph)
+                vibrationHistory.push(vibPercentReversed);
                 if (vibrationHistory.length > 30) vibrationHistory.shift();
                 
                 // Update gas display
@@ -2162,9 +2272,27 @@
                     gasIndicator.classList.add('safe');
                 }
                 
-                // Update charts
-                if (liveGasCtx) drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 1000);
-                if (liveVibrationCtx) drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#ef4444', 100);
+                // Update charts - ensure canvas contexts are valid before drawing
+                const liveGasCanvas = document.getElementById('live-gas-chart');
+                if (liveGasCanvas && gasHistory.length > 0) {
+                    // Re-initialize context if needed
+                    if (!liveGasCtx || liveGasCanvas.width === 0 || liveGasCanvas.height === 0) {
+                        liveGasCtx = liveGasCanvas.getContext('2d');
+                        liveGasCanvas.width = Math.max(liveGasCanvas.offsetWidth, 400);
+                        liveGasCanvas.height = Math.max(liveGasCanvas.offsetHeight, 80);
+                    }
+                    drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 2000, 'gas');
+                }
+                
+                const liveVibCanvas = document.getElementById('live-vibration-chart');
+                if (liveVibCanvas && vibrationHistory.length > 0) {
+                    if (!liveVibrationCtx || liveVibCanvas.width === 0 || liveVibCanvas.height === 0) {
+                        liveVibrationCtx = liveVibCanvas.getContext('2d');
+                        liveVibCanvas.width = Math.max(liveVibCanvas.offsetWidth, 400);
+                        liveVibCanvas.height = Math.max(liveVibCanvas.offsetHeight, 80);
+                    }
+                    drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#ef4444', 100, 'vibration');
+                }
                 
             } catch (err) {
                 console.warn('ESP32 fetch error:', err);
