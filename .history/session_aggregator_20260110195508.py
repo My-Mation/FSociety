@@ -1,0 +1,286 @@
+"""
+Session Aggregator Module
+Fetches and aggregates raw_audio + esp32_data for a given time window.
+Produces a token-efficient JSON payload for Gemini (without calling it).
+
+This module is ADDITIVE - it does NOT modify any existing tables or logic.
+"""
+
+import os
+from datetime import datetime
+
+# Gemini API key from environment (not used yet, but prepared)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+
+
+def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = None, device_id: str = None):
+    """
+    Fetch and aggregate data from raw_audio and esp32_data between start and stop timestamps.
+    
+    Args:
+        conn: PostgreSQL connection object
+        start_ts: ISO timestamp string (e.g., "2026-01-10T10:00:00")
+        stop_ts: ISO timestamp string (e.g., "2026-01-10T10:30:00")
+        machine_id: Optional filter for raw_audio
+        device_id: Optional filter for esp32_data
+    
+    Returns:
+        dict: Aggregated session payload (ready for Gemini)
+    """
+    cursor = conn.cursor()
+    
+    try:
+        # Parse timestamps for duration calculation
+        start_dt = datetime.fromisoformat(start_ts.replace('Z', '+00:00').replace('+00:00', ''))
+        stop_dt = datetime.fromisoformat(stop_ts.replace('Z', '+00:00').replace('+00:00', ''))
+        duration_sec = (stop_dt - start_dt).total_seconds()
+        
+        # =====================
+        # 1. AGGREGATE RAW_AUDIO (Sound Data)
+        # =====================
+        sound_summary = aggregate_sound_data(cursor, start_ts, stop_ts, machine_id, conn)
+        
+        # =====================
+        # 2. AGGREGATE ESP32_DATA (Vibration + Gas)
+        # =====================
+        vibration_summary, gas_summary, resolved_device_id = aggregate_esp32_data(
+            cursor, start_ts, stop_ts, device_id
+        )
+        
+        # =====================
+        # 3. BUILD FINAL PAYLOAD
+        # =====================
+        payload = {
+            "machine_id": machine_id or sound_summary.get("detected_machine_id", "unknown"),
+            "device_id": resolved_device_id or device_id or "unknown",
+            "session": {
+                "start": start_ts,
+                "stop": stop_ts,
+                "duration_sec": round(duration_sec, 1)
+            },
+            "sound_summary": {
+                "dominant_freq_median": sound_summary.get("dominant_freq_median", 0),
+                "freq_iqr": sound_summary.get("freq_iqr", [0, 0]),
+                "out_of_profile_events": sound_summary.get("out_of_profile_events", 0)
+            },
+            "vibration_summary": vibration_summary,
+            "gas_summary": gas_summary
+        }
+        
+        return payload
+        
+    finally:
+        cursor.close()
+
+
+def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, conn):
+    """
+    Aggregate sound data from raw_audio table.
+    Computes median frequency, IQR, and out-of-profile event count.
+    """
+    # Build query with optional machine_id filter
+    query = """
+        SELECT dominant_freq, freq_confidence, machine_id
+        FROM raw_audio
+        WHERE timestamp >= %s AND timestamp <= %s
+          AND mode = 'live'
+          AND dominant_freq IS NOT NULL
+          AND dominant_freq > 0
+    """
+    params = [start_ts, stop_ts]
+    
+    if machine_id:
+        query += " AND machine_id = %s"
+        params.append(machine_id)
+    
+    query += " ORDER BY timestamp"
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    if not rows:
+        return {
+            "dominant_freq_median": 0,
+            "freq_iqr": [0, 0],
+            "out_of_profile_events": 0,
+            "detected_machine_id": machine_id
+        }
+    
+    # Extract frequencies
+    frequencies = [r[0] for r in rows if r[0] and r[0] > 0]
+    detected_machine_id = machine_id
+    
+    # Try to detect most common machine_id if not provided
+    if not machine_id:
+        machine_ids = [r[2] for r in rows if r[2]]
+        if machine_ids:
+            from collections import Counter
+            detected_machine_id = Counter(machine_ids).most_common(1)[0][0]
+    
+    if not frequencies:
+        return {
+            "dominant_freq_median": 0,
+            "freq_iqr": [0, 0],
+            "out_of_profile_events": 0,
+            "detected_machine_id": detected_machine_id
+        }
+    
+    # Sort for percentile calculations
+    frequencies.sort()
+    n = len(frequencies)
+    
+    # Compute median
+    median_freq = frequencies[n // 2] if n % 2 == 1 else (frequencies[n // 2 - 1] + frequencies[n // 2]) / 2
+    
+    # Compute IQR (25th and 75th percentiles)
+    q1_idx = int(0.25 * (n - 1))
+    q3_idx = int(0.75 * (n - 1))
+    q1 = frequencies[q1_idx]
+    q3 = frequencies[q3_idx]
+    
+    # Count out-of-profile events (fetch profile if machine_id known)
+    out_of_profile = 0
+    if detected_machine_id:
+        out_of_profile = count_out_of_profile_events(conn, frequencies, detected_machine_id)
+    
+    return {
+        "dominant_freq_median": round(median_freq, 2),
+        "freq_iqr": [round(q1, 2), round(q3, 2)],
+        "out_of_profile_events": out_of_profile,
+        "detected_machine_id": detected_machine_id
+    }
+
+
+def count_out_of_profile_events(conn, frequencies: list, machine_id: str) -> int:
+    """
+    Count how many frequency readings fall outside the machine's calibrated IQR range.
+    """
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT iqr_low, iqr_high FROM machine_profiles WHERE machine_id = %s",
+            (machine_id,)
+        )
+        row = cursor.fetchone()
+        
+        if not row:
+            return 0
+        
+        iqr_low, iqr_high = row
+        out_of_range = sum(1 for f in frequencies if f < iqr_low or f > iqr_high)
+        return out_of_range
+        
+    finally:
+        cursor.close()
+
+
+def aggregate_esp32_data(cursor, start_ts: str, stop_ts: str, device_id: str = None):
+    """
+    Aggregate ESP32 sensor data (vibration + gas).
+    Returns vibration_summary, gas_summary, and resolved device_id.
+    """
+    # Build query with optional device_id filter
+    query = """
+        SELECT vibration, event_count, gas_raw, gas_status, device_id
+        FROM esp32_data
+        WHERE timestamp >= %s AND timestamp <= %s
+    """
+    params = [start_ts, stop_ts]
+    
+    if device_id:
+        query += " AND device_id = %s"
+        params.append(device_id)
+    
+    query += " ORDER BY timestamp"
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    
+    if not rows:
+        return (
+            {"avg": 0, "peak": 0, "event_count": 0},
+            {"avg_raw": 0, "peak_raw": 0, "status": "LOW"},
+            device_id
+        )
+    
+    # Extract values
+    vibrations = []
+    event_counts = []
+    gas_raws = []
+    gas_statuses = []
+    resolved_device_id = device_id
+    
+    for row in rows:
+        vib, evt, gas, status, dev_id = row
+        
+        if vib is not None:
+            # Reverse vibration logic: 0 = active, 1 = inactive
+            # Convert to activity percentage (0 -> 100%, 1 -> 0%)
+            activity = (1 - vib) * 100 if vib <= 1 else 0
+            vibrations.append(activity)
+        
+        if evt is not None:
+            event_counts.append(evt)
+        
+        if gas is not None and gas > 0:
+            gas_raws.append(gas)
+        
+        if status:
+            gas_statuses.append(status)
+        
+        if not resolved_device_id and dev_id:
+            resolved_device_id = dev_id
+    
+    # Vibration summary
+    vib_avg = sum(vibrations) / len(vibrations) if vibrations else 0
+    vib_peak = max(vibrations) if vibrations else 0
+    total_events = sum(event_counts) if event_counts else 0
+    
+    vibration_summary = {
+        "avg": round(vib_avg, 1),
+        "peak": round(vib_peak, 1),
+        "event_count": total_events
+    }
+    
+    # Gas summary
+    gas_avg = sum(gas_raws) / len(gas_raws) if gas_raws else 0
+    gas_peak = max(gas_raws) if gas_raws else 0
+    
+    # Determine overall gas status
+    gas_status = determine_gas_status(gas_avg, gas_statuses)
+    
+    gas_summary = {
+        "avg_raw": round(gas_avg, 1),
+        "peak_raw": round(gas_peak, 1),
+        "status": gas_status
+    }
+    
+    return vibration_summary, gas_summary, resolved_device_id
+
+
+def determine_gas_status(avg_gas: float, statuses: list) -> str:
+    """
+    Determine overall gas status based on average value and collected statuses.
+    """
+    # Priority: if any DANGER/RISK, mark HIGH
+    if any(s in ['DANGER', 'RISK', 'HAZARDOUS'] for s in statuses):
+        return "HIGH"
+    
+    # By average value thresholds
+    if avg_gas > 2000:
+        return "HIGH"
+    elif avg_gas > 800:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+
+def get_gemini_api_key_status() -> dict:
+    """
+    Check if Gemini API key is configured (without exposing it).
+    """
+    key = os.getenv('GEMINI_API_KEY', '')
+    return {
+        "configured": bool(key and len(key) > 10),
+        "key_preview": f"{key[:4]}...{key[-4:]}" if key and len(key) > 10 else "NOT_SET"
+    }
