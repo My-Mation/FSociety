@@ -838,6 +838,9 @@
                 <button id="live-stop-btn" class="stop-btn" onclick="stopLiveDetection()" disabled>
                     ⏹️ Stop Detection
                 </button>
+                <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()" style="display: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); font-size: 16px; padding: 15px 30px; margin-left: 10px;">
+                    🔮 Send Session to Gemini AI
+                </button>
             </div>
             
             <!-- Live Dashboard Grid (inactive until started) -->
@@ -1626,15 +1629,15 @@
                                     <strong>${p.vibration_data.samples}</strong>
                                 </div>
                                 <div class="profile-detail">
-                                    <span>Vibration Detected:</span>
-                                    <strong style="color: ${p.vibration_data.has_vibration ? '#22c55e' : '#888'};">
-                                        ${p.vibration_data.vibration_percent}% of samples
+                                    <span>Vibration Activity:</span>
+                                    <strong style="color: ${(100 - p.vibration_data.vibration_percent) > 50 ? '#22c55e' : '#888'};">
+                                        ${(100 - p.vibration_data.vibration_percent).toFixed(1)}% active
                                     </strong>
                                 </div>
                                 <div class="profile-detail">
                                     <span>Status:</span>
-                                    <strong style="color: ${p.vibration_data.has_vibration ? '#22c55e' : '#888'};">
-                                        ${p.vibration_data.has_vibration ? '✓ Machine Vibrates' : '✗ No Vibration'}
+                                    <strong style="color: ${(100 - p.vibration_data.vibration_percent) > 50 ? '#22c55e' : '#888'};">
+                                        ${(100 - p.vibration_data.vibration_percent) > 50 ? '✓ Machine Vibrates' : '✗ No Vibration'}
                                     </strong>
                                 </div>
                             ` : `
@@ -2052,6 +2055,13 @@
             liveBatch = [];
             liveBatchTimer = 0;
             
+            // Record session start time for Gemini
+            window.liveSessionStartTime = new Date().toISOString().slice(0, 19);
+            window.liveSessionStopTime = null;
+            
+            // Hide Gemini button when starting new session
+            document.getElementById('gemini-analysis-btn').style.display = 'none';
+            
             // Reset tracking variables
             amplitudeHistory = [];
             frequencyHistory = [];
@@ -2281,7 +2291,7 @@
                         liveGasCanvas.width = Math.max(liveGasCanvas.offsetWidth, 400);
                         liveGasCanvas.height = Math.max(liveGasCanvas.offsetHeight, 80);
                     }
-                    drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 2000, 'gas');
+                    drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 5000, 'gas');
                 }
                 
                 const liveVibCanvas = document.getElementById('live-vibration-chart');
@@ -2306,12 +2316,38 @@
             
             stopLiveESP32Polling();
             
+            // Record session end time
+            window.liveSessionStopTime = new Date().toISOString().slice(0, 19);
+            
             document.getElementById('live-mode-badge').textContent = 'IDLE';
             document.getElementById('live-mode-badge').className = 'mode-badge idle';
             document.getElementById('live-start-btn').disabled = false;
             document.getElementById('live-stop-btn').disabled = true;
             
-            updateStatus('livedetection', 'Detection stopped.', 'info');
+            // Show Gemini analysis button
+            document.getElementById('gemini-analysis-btn').style.display = 'inline-block';
+            
+            updateStatus('livedetection', 'Detection stopped. Click "Send Session to Gemini AI" to analyze this session.', 'info');
+        }
+        
+        // Session tracking for Gemini
+        window.liveSessionStartTime = null;
+        window.liveSessionStopTime = null;
+        
+        function openGeminiAnalysis() {
+            if (!window.liveSessionStartTime || !window.liveSessionStopTime) {
+                alert('No session data available. Please run a detection session first.');
+                return;
+            }
+            
+            // Open the Gemini analysis page with session parameters
+            const params = new URLSearchParams({
+                start: window.liveSessionStartTime,
+                stop: window.liveSessionStopTime,
+                autoload: 'true'
+            });
+            
+            window.open('/gemini-analysis?' + params.toString(), '_blank');
         }
     </script>
 </body>

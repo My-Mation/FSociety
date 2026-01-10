@@ -1301,6 +1301,364 @@ def live_status():
         print(f"[ERROR] LIVE_STATUS ERROR: {str(e)}")
         return jsonify({"detected": [], "stable": []})
 
+
+# =========================
+# SESSION AGGREGATION & GEMINI PREVIEW (ADDITIVE - NO EXISTING CODE MODIFIED)
+# =========================
+from session_aggregator import aggregate_session_data, get_gemini_api_key_status, call_gemini_with_fallback, get_latest_data_range, validate_time_range
+
+
+@app.route("/session-preview-page")
+def session_preview_page():
+    """Serve the session preview debug page"""
+    return send_file(os.path.join(BASE_DIR, "session_preview.html"))
+
+
+@app.route("/gemini-analysis")
+def gemini_analysis_page():
+    """Serve the Gemini analysis page"""
+    return send_file(os.path.join(BASE_DIR, "gemini_analysis.html"))
+
+
+@app.route("/latest-data-range", methods=["GET"])
+def latest_data_range():
+    """
+    Get the latest data time range from the database.
+    Used by frontend to auto-select valid time range.
+    
+    Query params:
+        duration: Seconds of data to include (default 60)
+    
+    Returns:
+        { start, stop, has_data, audio_count, esp32_count, message }
+    """
+    duration = request.args.get('duration', default=60, type=int)
+    
+    try:
+        result = get_latest_data_range(conn, duration_seconds=duration)
+        return jsonify(result)
+    except Exception as e:
+        print(f"[ERROR] LATEST_DATA_RANGE ERROR: {str(e)}")
+        return jsonify({"error": str(e), "has_data": False}), 500
+
+
+@app.route("/validate-time-range", methods=["GET"])
+def validate_range():
+    """
+    Validate that a time range has data before allowing Gemini analysis.
+    
+    Query params:
+        start: ISO timestamp
+        stop: ISO timestamp
+    
+    Returns:
+        { valid, audio_count, esp32_count, audio_earliest, audio_latest }
+    """
+    start_ts = request.args.get('start')
+    stop_ts = request.args.get('stop')
+    
+    if not start_ts or not stop_ts:
+        return jsonify({"error": "start and stop are required", "valid": False}), 400
+    
+    try:
+        result = validate_time_range(conn, start_ts, stop_ts)
+        return jsonify(result)
+    except Exception as e:
+        print(f"[ERROR] VALIDATE_TIME_RANGE ERROR: {str(e)}")
+        return jsonify({"error": str(e), "valid": False}), 500
+
+
+@app.route("/session-preview", methods=["GET"])
+def get_session_preview():
+    """
+    Generate a preview of the aggregated session payload for Gemini.
+    This does NOT call Gemini - it only shows what WOULD be sent.
+    
+    Query params:
+        start: ISO timestamp (required)
+        stop: ISO timestamp (required)
+        machine_id: Filter by machine (optional)
+        device_id: Filter by ESP32 device (optional)
+    
+    Returns:
+        JSON payload in the exact format for Gemini
+    """
+    start_ts = request.args.get('start')
+    stop_ts = request.args.get('stop')
+    machine_id = request.args.get('machine_id')
+    device_id = request.args.get('device_id')
+    
+    if not start_ts or not stop_ts:
+        return jsonify({"error": "start and stop timestamps are required"}), 400
+    
+    try:
+        payload = aggregate_session_data(
+            conn=conn,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            machine_id=machine_id or None,
+            device_id=device_id or None
+        )
+        
+        print(f"[OK] SESSION PREVIEW: {start_ts} → {stop_ts}")
+        print(f"     Machine: {payload.get('machine_id')}, Device: {payload.get('device_id')}")
+        print(f"     Duration: {payload['session']['duration_sec']}s")
+        
+        return jsonify(payload)
+        
+    except Exception as e:
+        print(f"[ERROR] SESSION_PREVIEW ERROR: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api-key-status", methods=["GET"])
+def api_key_status():
+    """
+    Check if Gemini API key is configured (without exposing the full key).
+    Frontend can use this to show configuration status.
+    """
+    status = get_gemini_api_key_status()
+    return jsonify(status)
+
+
+@app.route("/debug-db", methods=["GET"])
+def debug_db():
+    """
+    Debug endpoint to check what data exists in the database.
+    Shows row counts and latest timestamps for each table.
+    """
+    cursor = conn.cursor()
+    
+    try:
+        result = {}
+        
+        # Check raw_audio table
+        cursor.execute("SELECT COUNT(*) FROM raw_audio")
+        result['raw_audio_count'] = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM raw_audio")
+        row = cursor.fetchone()
+        result['raw_audio_earliest'] = str(row[0]) if row[0] else None
+        result['raw_audio_latest'] = str(row[1]) if row[1] else None
+        
+        # Check esp32_data table
+        cursor.execute("SELECT COUNT(*) FROM esp32_data")
+        result['esp32_data_count'] = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM esp32_data")
+        row = cursor.fetchone()
+        result['esp32_earliest'] = str(row[0]) if row[0] else None
+        result['esp32_latest'] = str(row[1]) if row[1] else None
+        
+        # Check machine_profiles
+        cursor.execute("SELECT COUNT(*) FROM machine_profiles")
+        result['profiles_count'] = cursor.fetchone()[0]
+        
+        # Get sample of recent raw_audio
+        cursor.execute("""
+            SELECT timestamp, amplitude, dominant_freq, machine_id, mode 
+            FROM raw_audio 
+            ORDER BY timestamp DESC 
+            LIMIT 5
+        """)
+        result['recent_raw_audio'] = [
+            {
+                'timestamp': str(r[0]),
+                'amplitude': r[1],
+                'dominant_freq': r[2],
+                'machine_id': r[3],
+                'mode': r[4]
+            }
+            for r in cursor.fetchall()
+        ]
+        
+        # Get sample of recent esp32_data
+        cursor.execute("""
+            SELECT timestamp, device_id, vibration, gas_raw, gas_status 
+            FROM esp32_data 
+            ORDER BY timestamp DESC 
+            LIMIT 5
+        """)
+        result['recent_esp32_data'] = [
+            {
+                'timestamp': str(r[0]),
+                'device_id': r[1],
+                'vibration': r[2],
+                'gas_raw': r[3],
+                'gas_status': r[4]
+            }
+            for r in cursor.fetchall()
+        ]
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"[ERROR] DEBUG_DB ERROR: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        cursor.close()
+
+
+@app.route("/gemini-analyze", methods=["POST"])
+def gemini_analyze():
+    """
+    Send session data to Gemini API for analysis with multi-model fallback.
+    
+    Expects JSON body:
+        { "session_data": { ... aggregated session payload ... } }
+    
+    Returns:
+        { "ai_used": true, "model": "gemini-1.5-flash", "analysis": {...} }
+        or
+        { "ai_used": false, "reason": "...", "fallback": "Rule-based diagnostics only" }
+    """
+    try:
+        data = request.get_json(force=True)
+        session_data = data.get('session_data')
+        
+        if not session_data:
+            return jsonify({"error": "session_data is required"}), 400
+        
+        print(f"[OK] GEMINI ANALYZE: Sending session to Gemini API...")
+        print(f"     Machine: {session_data.get('machine_id')}")
+        print(f"     Duration: {session_data.get('session', {}).get('duration_sec')}s")
+        
+        # Call Gemini API with multi-model fallback
+        try:
+            result = call_gemini_with_fallback(session_data)
+            
+            print(f"[OK] GEMINI RESPONSE: model={result['model_used']}, health_status={result['analysis'].get('health_status')}")
+            
+            return jsonify({
+                "status": "success",
+                "ai_used": True,
+                "model": result["model_used"],
+                "analysis": result["analysis"]
+            })
+            
+        except RuntimeError as e:
+            # All models failed - return graceful fallback
+            print(f"[WARN] GEMINI FALLBACK: {str(e)}")
+            return jsonify({
+                "status": "fallback",
+                "ai_used": False,
+                "reason": str(e),
+                "fallback": "Rule-based diagnostics only",
+                "analysis": generate_rule_based_analysis(session_data)
+            })
+        
+    except Exception as e:
+        print(f"[ERROR] GEMINI_ANALYZE ERROR: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+def generate_rule_based_analysis(session_data: dict) -> dict:
+    """
+    Generate basic rule-based analysis when AI is unavailable.
+    This provides meaningful diagnostics without Gemini.
+    """
+    findings = []
+    actions = []
+    health_status = "NORMAL"
+    severity = "LOW"
+    
+    # Analyze sound data
+    sound = session_data.get("sound_summary", {})
+    freq = sound.get("dominant_freq_median", 0)
+    out_of_profile = sound.get("out_of_profile_events", 0)
+    
+    if freq > 0:
+        findings.append({
+            "signal": "sound",
+            "observation": f"Dominant frequency: {freq:.1f} Hz",
+            "interpretation": "Frequency detected within operational range",
+            "confidence": "MEDIUM"
+        })
+    
+    if out_of_profile > 10:
+        findings.append({
+            "signal": "sound",
+            "observation": f"{out_of_profile} out-of-profile frequency events",
+            "interpretation": "Possible mechanical anomaly or environmental noise",
+            "confidence": "MEDIUM"
+        })
+        health_status = "WARNING"
+        severity = "MEDIUM"
+        actions.append("Investigate source of frequency deviations")
+    
+    # Analyze vibration data
+    vib = session_data.get("vibration_summary", {})
+    vib_avg = vib.get("avg", 0)
+    vib_peak = vib.get("peak", 0)
+    
+    if vib_peak > 80:
+        findings.append({
+            "signal": "vibration",
+            "observation": f"High peak vibration: {vib_peak:.1f}%",
+            "interpretation": "Excessive vibration detected",
+            "confidence": "HIGH"
+        })
+        health_status = "WARNING"
+        severity = "MEDIUM"
+        actions.append("Check for loose components or imbalance")
+    elif vib_avg > 0:
+        findings.append({
+            "signal": "vibration",
+            "observation": f"Average vibration activity: {vib_avg:.1f}%",
+            "interpretation": "Normal operational vibration",
+            "confidence": "MEDIUM"
+        })
+    
+    # Analyze gas data
+    gas = session_data.get("gas_summary", {})
+    gas_status = gas.get("status", "LOW")
+    gas_avg = gas.get("avg_raw", 0)
+    
+    if gas_status == "HIGH":
+        findings.append({
+            "signal": "gas",
+            "observation": f"High gas level detected: {gas_avg:.0f} raw",
+            "interpretation": "Air quality concern - possible leak or combustion issue",
+            "confidence": "HIGH"
+        })
+        health_status = "CRITICAL"
+        severity = "HIGH"
+        actions.append("Immediately check ventilation and gas sources")
+        actions.append("Ensure proper exhaust system operation")
+    elif gas_status == "MEDIUM":
+        findings.append({
+            "signal": "gas",
+            "observation": f"Moderate gas level: {gas_avg:.0f} raw",
+            "interpretation": "Elevated but not critical air quality",
+            "confidence": "MEDIUM"
+        })
+        if health_status == "NORMAL":
+            health_status = "WARNING"
+            severity = "MEDIUM"
+        actions.append("Monitor air quality trends")
+    
+    # Default action if everything looks good
+    if not actions:
+        actions.append("Continue normal monitoring")
+        actions.append("No immediate action required")
+    
+    return {
+        "health_status": health_status,
+        "key_findings": findings if findings else [{
+            "signal": "combined",
+            "observation": "Insufficient data for detailed analysis",
+            "interpretation": "More sensor data needed",
+            "confidence": "LOW"
+        }],
+        "overall_severity": severity,
+        "recommended_actions": actions,
+        "notes": "Analysis generated using rule-based fallback (AI unavailable)"
+    }
+
+
 # =========================
 # RUN
 # =========================
