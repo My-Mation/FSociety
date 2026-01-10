@@ -103,6 +103,10 @@ def ensure_db_schema():
         profile_cols = {r[0] for r in cur.fetchall()}
         if 'freq_bands' not in profile_cols:
             cur.execute("ALTER TABLE machine_profiles ADD COLUMN freq_bands JSONB;")
+        if 'vibration_data' not in profile_cols:
+            cur.execute("ALTER TABLE machine_profiles ADD COLUMN vibration_data JSONB;")
+        if 'gas_data' not in profile_cols:
+            cur.execute("ALTER TABLE machine_profiles ADD COLUMN gas_data JSONB;")
 
         # Create esp32_data table for ESP32 sensor data
         cur.execute("""
@@ -687,9 +691,70 @@ def save_profile():
     try:
         data = request.get_json(force=True)
         machine_id = data.get("machine_id")
+        # ESP32 calibration data from frontend
+        vibration_samples = data.get("vibration_samples", [])
+        gas_samples = data.get("gas_samples", [])
+        
+        # Debug logging
+        print(f"[DEBUG] save_profile received: machine_id={machine_id}")
+        print(f"[DEBUG] vibration_samples count: {len(vibration_samples) if vibration_samples else 0}")
+        print(f"[DEBUG] gas_samples count: {len(gas_samples) if gas_samples else 0}")
 
         if not machine_id:
             return jsonify({"error": "machine_id required"}), 400
+
+        # Process vibration data (IMPORTANT: 0 = vibration detected, 1 = no vibration)
+        vibration_data = None
+        if vibration_samples and len(vibration_samples) > 0:
+            # Count how many samples had vibration (value 0)
+            vibration_count = sum(1 for v in vibration_samples if v == 0)
+            total_samples = len(vibration_samples)
+            vibration_percent = (vibration_count / total_samples) * 100 if total_samples > 0 else 0
+            avg_raw = sum(vibration_samples) / total_samples if total_samples > 0 else 0
+            vibration_data = {
+                "samples": total_samples,
+                "vibration_detected_count": vibration_count,
+                "vibration_percent": round(vibration_percent, 1),
+                "avg_raw_value": round(avg_raw, 3),
+                "has_vibration": vibration_percent > 50
+            }
+        
+        # Process gas data
+        gas_data = None
+        if gas_samples and len(gas_samples) > 0:
+            raw_values = [g.get("raw", 0) if isinstance(g, dict) else g for g in gas_samples]
+            # Filter out invalid readings (0 usually means sensor disconnected)
+            valid_raw_values = [v for v in raw_values if v > 0]
+            
+            if valid_raw_values:
+                avg_gas = sum(valid_raw_values) / len(valid_raw_values)
+                max_gas = max(valid_raw_values)
+                min_gas = min(valid_raw_values)
+            else:
+                avg_gas = 0
+                max_gas = 0
+                min_gas = 0
+            
+            # Determine overall status based on ESP32's own classification (most common)
+            # or use thresholds appropriate for MQ gas sensors (0-4095 ADC range)
+            # Typical: <800 = SAFE, 800-2000 = MODERATE, >2000 = HAZARDOUS
+            if avg_gas == 0:
+                gas_status = "NO_DATA"
+            elif avg_gas < 800:
+                gas_status = "SAFE"
+            elif avg_gas < 2000:
+                gas_status = "MODERATE"
+            else:
+                gas_status = "HAZARDOUS"
+            
+            gas_data = {
+                "samples": len(gas_samples),
+                "valid_samples": len(valid_raw_values),
+                "avg_raw": round(avg_gas, 1),
+                "max_raw": round(max_gas, 1),
+                "min_raw": round(min_gas, 1),
+                "status": gas_status
+            }
 
         # 1. FETCH CALIBRATION DATA (all peaks, not just dominant)
         cursor.execute(
@@ -793,23 +858,31 @@ def save_profile():
         for i, band in enumerate(freq_bands):
             print(f"  Band {i+1}: {band['low']:.1f} – {band['high']:.1f} Hz (center: {band['center']:.1f}, samples: {band['samples']})")
 
-        # 6. SAVE PROFILE WITH FREQ_BANDS
+        # 6. SAVE PROFILE WITH FREQ_BANDS AND ESP32 DATA
         cursor.execute(
             """
             INSERT INTO machine_profiles
-                (machine_id, median_freq, iqr_low, iqr_high, freq_bands, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                (machine_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
             ON CONFLICT (machine_id)
             DO UPDATE SET
                 median_freq = EXCLUDED.median_freq,
                 iqr_low = EXCLUDED.iqr_low,
                 iqr_high = EXCLUDED.iqr_high,
                 freq_bands = EXCLUDED.freq_bands,
+                vibration_data = EXCLUDED.vibration_data,
+                gas_data = EXCLUDED.gas_data,
                 updated_at = NOW()
             """,
-            (machine_id, median_freq, iqr_low, iqr_high, psycopg2.extras.Json(freq_bands))
+            (machine_id, median_freq, iqr_low, iqr_high, 
+             psycopg2.extras.Json(freq_bands),
+             psycopg2.extras.Json(vibration_data) if vibration_data else None,
+             psycopg2.extras.Json(gas_data) if gas_data else None)
         )
         conn.commit()
+
+        print(f"   Vibration data: {vibration_data}")
+        print(f"   Gas data: {gas_data}")
 
         return jsonify({
             "status": "profile_saved",
@@ -820,7 +893,9 @@ def save_profile():
             "iqr_high": round(iqr_high, 2),
             "freq_bands": freq_bands,
             "bands_count": len(freq_bands),
-            "frames_used": n_total
+            "frames_used": n_total,
+            "vibration_data": vibration_data,
+            "gas_data": gas_data
         })
 
     except Exception as e:
@@ -840,7 +915,7 @@ def get_profiles():
     try:
         cursor.execute(
             """
-            SELECT machine_id, median_freq, iqr_low, iqr_high, freq_bands, created_at
+            SELECT machine_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at
             FROM machine_profiles
             ORDER BY machine_id
             """
@@ -854,7 +929,9 @@ def get_profiles():
             iqr_low = row[2]
             iqr_high = row[3]
             freq_bands = row[4]
-            created_at = row[5]
+            vibration_data = row[5]
+            gas_data = row[6]
+            created_at = row[7]
 
             # Safely round numeric values that may be NULL in DB
             def safe_round(val):
@@ -872,6 +949,8 @@ def get_profiles():
                 "iqr": iqr_val,
                 "freq_bands": freq_bands if freq_bands else [],
                 "bands_count": len(freq_bands) if freq_bands else 0,
+                "vibration_data": vibration_data,
+                "gas_data": gas_data,
                 "created_at": str(created_at) if created_at is not None else None
             })
 

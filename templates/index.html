@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Sound Calibration & Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            padding: 20px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        /* Header Section */
+        .header {
+            margin-bottom: 40px;
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .header .subtitle {
+            font-size: 16px;
+            color: #cccccc;
+            margin-bottom: 8px;
+        }
+        
+        .header .status {
+            font-size: 12px;
+            color: #888888;
+        }
+        
+        /* Card Styles */
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .data-row:last-child {
+            border-bottom: none;
+        }
+        
+        .data-label {
+            font-size: 14px;
+            color: #aaaaaa;
+            font-weight: normal;
+        }
+        
+        .data-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        /* Vibration Status */
+        .vibration-on {
+            color: #22c55e;
+        }
+        
+        .vibration-off {
+            color: #888888;
+        }
+        
+        /* Gas Status Colors */
+        .gas-medium {
+            color: #22c55e;
+        }
+        
+        .gas-warning {
+            color: #eab308;
+        }
+        
+        .gas-risk {
+            color: #ef4444;
+        }
+        
+        /* Machine Detection */
+        .detected-raw {
+            color: #eab308;
+            font-weight: normal;
+        }
+        
+        .detected-stable {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+            font-size: 11px;
+            color: #666666;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            .card {
+                padding: 16px;
+            }
+            
+            .data-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            
+            .data-value {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1>Machine Sound Calibration & Detection System</h1>
+            <div class="subtitle">Live ESP32 Sensor + Acoustic Monitoring</div>
+            <div class="status">Backend Connected</div>
+        </div>
+        
+        <!-- ESP32 Sensor Status Card -->
+        <div class="card">
+            <div class="card-title">ESP32 Sensor Telemetry</div>
+            
+            <div class="data-row">
+                <span class="data-label">Vibration Status:</span>
+                <span class="data-value" id="vibration-status">--</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Gas Raw Value:</span>
+                <span class="data-value" id="gas-raw">--</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Gas Status:</span>
+                <span class="data-value" id="gas-status">--</span>
+            </div>
+        </div>
+        
+        <!-- Machine Detection Card -->
+        <div class="card">
+            <div class="card-title">Acoustic Machine Detection</div>
+            
+            <div class="data-row">
+                <span class="data-label">Detected Machines (Raw):</span>
+                <span class="data-value detected-raw" id="detected-raw">None</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Stable Machines:</span>
+                <span class="data-value detected-stable" id="stable-machines">None</span>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            Demo System – Not for Production Use
+        </div>
+    </div>
+    
+    <script>
+        const BACKEND_URL = window.location.origin;
+        
+        let lastESP32Data = {
+            vibration: 0,
+            gas_raw: 0,
+            gas_status: 'UNKNOWN'
+        };
+        
+        let lastStatusData = {
+            detected: [],
+            stable: []
+        };
+        
+        function updateESP32Display(data) {
+            if (!data) return;
+            
+            lastESP32Data = data;
+            
+            // Vibration Status
+            const vibEl = document.getElementById('vibration-status');
+            if (data.vibration && data.vibration > 0) {
+                vibEl.textContent = 'ON';
+                vibEl.className = 'data-value vibration-on';
+            } else {
+                vibEl.textContent = 'OFF';
+                vibEl.className = 'data-value vibration-off';
+            }
+            
+            // Gas Raw Value
+            document.getElementById('gas-raw').textContent = data.gas_raw !== undefined ? data.gas_raw : 0;
+            
+            // Gas Status
+            const gasStatusEl = document.getElementById('gas-status');
+            const gasStatus = data.gas_status || 'UNKNOWN';
+            gasStatusEl.textContent = gasStatus;
+            
+            if (gasStatus === 'RISK' || gasStatus === 'DANGER') {
+                gasStatusEl.className = 'data-value gas-risk';
+            } else if (gasStatus === 'WARNING') {
+                gasStatusEl.className = 'data-value gas-warning';
+            } else {
+                gasStatusEl.className = 'data-value gas-medium';
+            }
+        }
+        
+        function updateDetectionDisplay(data) {
+            if (!data) return;
+            
+            lastStatusData = data;
+            
+            // Detected Machines (Raw)
+            const detected = data.detected || [];
+            const detectedEl = document.getElementById('detected-raw');
+            detectedEl.textContent = detected.length > 0 ? detected.join(', ') : 'None';
+            
+            // Stable Machines
+            const stable = data.stable || [];
+            const stableEl = document.getElementById('stable-machines');
+            stableEl.textContent = stable.length > 0 ? stable.join(', ') : 'None';
+        }
+        
+        async function fetchESP32Data() {
+            try {
+                const response = await fetch(BACKEND_URL + '/latest_esp32');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateESP32Display(data);
+                }
+            } catch (error) {
+                // Silently fail, keep last known values
+            }
+        }
+        
+        async function fetchLiveStatus() {
+            try {
+                const response = await fetch(BACKEND_URL + '/live_status');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDetectionDisplay(data);
+                }
+            } catch (error) {
+                // Silently fail, keep last known values
+            }
+        }
+        
+        async function pollData() {
+            await Promise.all([fetchESP32Data(), fetchLiveStatus()]);
+        }
+        
+        // Initial load
+        pollData();
+        
+        // Poll every 2 seconds
+        setInterval(pollData, 2000);
+    </script>
+</body>
+</html>
+
