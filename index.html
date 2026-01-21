@@ -53,21 +53,24 @@
         }
 
         .tab-btn {
-            padding: 10px 20px;
-            background: none;
+            padding: 12px 20px;
+            background: #1a1a1a;
             border: none;
-            color: #888;
+            color: #666;
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
+            font-weight: 400;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: #000;
         }
 
         .tab-btn.active {
             color: #e0e0e0;
-            background: #2a2a2a;
-            border-bottom-color: #5a9bd5;
             font-weight: 600;
+            background: #64748b;
         }
         
         .tab-content {
@@ -195,100 +198,143 @@
         
         .profiles-list {
             display: grid;
-            gap: 15px;
+            gap: 20px;
         }
-        
+
         .profile-card {
             background: #1a1a1a;
-            padding: 25px;
-            border-radius: 6px;
-            margin-bottom: 30px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+            overflow: hidden;
         }
 
         .profile-header {
+            background: #2a2a2a;
+            padding: 20px 25px;
             font-family: 'Roboto Slab', serif;
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
             color: #e0e0e0;
-            margin-bottom: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid #333;
         }
 
         .profile-section {
-            margin-top: 30px;
-            margin-bottom: 25px;
+            background: #222;
+            margin: 0;
+            padding: 25px;
+            border-bottom: 1px solid #333;
+        }
+
+        .profile-section:last-child {
+            border-bottom: none;
         }
 
         .profile-section h4 {
             font-family: 'Roboto Slab', serif;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
-            color: #e0e0e0;
+            color: #5a9bd5;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        .profile-content {
+            margin: 0;
+            padding: 0;
+        }
+
+        .profile-data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
             margin-bottom: 15px;
+        }
+
+        .profile-data-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .profile-label {
+            font-size: 11px;
+            color: #888;
+            font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .profile-content {
-            padding: 20px 0;
+        .profile-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
         }
 
         .profile-subcontent {
-            margin-top: 15px;
-            padding: 15px 0;
+            background: #1a1a1a;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #333;
         }
 
         .profile-sublabel {
             color: #888;
             font-size: 11px;
-            margin-bottom: 6px;
+            margin-bottom: 10px;
             font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .profile-band {
             font-size: 12px;
             color: #5a9bd5;
-            padding: 2px 0;
+            padding: 4px 0;
+            line-height: 1.4;
+            margin-left: 15px;
+            border-left: 2px solid #333;
+            padding-left: 10px;
         }
 
         .profile-placeholder {
             color: #666;
-            font-size: 13px;
+            font-size: 14px;
             text-align: center;
-            padding: 20px;
+            padding: 30px 20px;
+            font-style: italic;
         }
 
         .profile-footer {
-            margin-top: 20px;
+            background: #1a1a1a;
+            padding: 15px 25px;
             font-size: 11px;
             color: #666;
             text-align: center;
+            border-top: 1px solid #333;
         }
-        
+
         .delete-btn {
             background: none;
-            color: #888;
+            color: #666;
             border: none;
-            padding: 5px 10px;
-            border-radius: 6px;
+            padding: 6px 12px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
-            font-weight: 400;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
 
         .delete-btn:hover {
-            background: #7f1d1d;
+            background: #dc2626;
             color: white;
-        }
-        
-        .profile-detail {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            margin-bottom: 10px;
-            align-items: center;
         }
         
         .detection-status {
@@ -1647,21 +1693,23 @@
                         <div class="profile-section">
                             <h4>Audio Signature</h4>
                             <div class="profile-content">
-                                <div class="profile-detail">
-                                    <span>Median Frequency:</span>
-                                    <strong>${p.median_freq} Hz</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Overall IQR Range:</span>
-                                    <strong>${p.iqr_low} – ${p.iqr_high} Hz</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Frequency Bands:</span>
-                                    <strong>${p.bands_count || 0} bands</strong>
+                                <div class="profile-data-grid">
+                                    <div class="profile-data-item">
+                                        <div class="profile-label">Median Frequency</div>
+                                        <div class="profile-value">${p.median_freq} Hz</div>
+                                    </div>
+                                    <div class="profile-data-item">
+                                        <div class="profile-label">IQR Range</div>
+                                        <div class="profile-value">${p.iqr_low} – ${p.iqr_high} Hz</div>
+                                    </div>
+                                    <div class="profile-data-item">
+                                        <div class="profile-label">Band Count</div>
+                                        <div class="profile-value">${p.bands_count || 0} bands</div>
+                                    </div>
                                 </div>
                                 ${p.freq_bands && p.freq_bands.length > 0 ? `
                                     <div class="profile-subcontent">
-                                        <div class="profile-sublabel">Detected Harmonic Bands:</div>
+                                        <div class="profile-sublabel">Harmonic Bands</div>
                                         ${p.freq_bands.map((b, i) => `
                                             <div class="profile-band">Band ${i+1}: ${b.low.toFixed(0)} – ${b.high.toFixed(0)} Hz (${b.samples} samples)</div>
                                         `).join('')}
@@ -1674,18 +1722,18 @@
                             <h4>Vibration Pattern</h4>
                             <div class="profile-content">
                                 ${p.vibration_data ? `
-                                    <div class="profile-detail">
-                                        <span>Samples Collected:</span>
-                                        <strong>${p.vibration_data.samples}</strong>
-                                    </div>
-                                    <div class="profile-detail">
-                                        <span>Vibration Level:</span>
-                                        <strong style="color: #16a34a;">
-                                            ${(100 - p.vibration_data.vibration_percent).toFixed(1)}% vibration
-                                        </strong>
+                                    <div class="profile-data-grid">
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Samples Collected</div>
+                                            <div class="profile-value">${p.vibration_data.samples}</div>
+                                        </div>
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Vibration Level</div>
+                                            <div class="profile-value" style="color: #16a34a;">${(100 - p.vibration_data.vibration_percent).toFixed(1)}%</div>
+                                        </div>
                                     </div>
                                 ` : `
-                                    <div class="profile-placeholder">No vibration data collected</div>
+                                    <div class="profile-placeholder">No vibration events recorded</div>
                                 `}
                             </div>
                         </div>
@@ -1694,26 +1742,28 @@
                             <h4>Air Quality</h4>
                             <div class="profile-content">
                                 ${p.gas_data ? `
-                                    <div class="profile-detail">
-                                        <span>Samples Collected:</span>
-                                        <strong>${p.gas_data.valid_samples || p.gas_data.samples} / ${p.gas_data.samples}</strong>
-                                    </div>
-                                    <div class="profile-detail">
-                                        <span>Average Gas Level:</span>
-                                        <strong>${p.gas_data.avg_raw}</strong>
-                                    </div>
-                                    <div class="profile-detail">
-                                        <span>Range:</span>
-                                        <strong>${p.gas_data.min_raw} – ${p.gas_data.max_raw}</strong>
-                                    </div>
-                                    <div class="profile-detail">
-                                        <span>Status:</span>
-                                        <strong style="color: ${p.gas_data.status === 'SAFE' ? '#16a34a' : p.gas_data.status === 'MODERATE' ? '#eab308' : p.gas_data.status === 'NO_DATA' ? '#666' : '#dc2626'};">
-                                            ${p.gas_data.status === 'SAFE' ? '✓ Safe (<800)' : p.gas_data.status === 'MODERATE' ? '⚠️ Moderate (800-2000)' : p.gas_data.status === 'NO_DATA' ? '❓ No valid readings' : '🚨 Hazardous (>2000)'}
-                                        </strong>
+                                    <div class="profile-data-grid">
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Samples Collected</div>
+                                            <div class="profile-value">${p.gas_data.valid_samples || p.gas_data.samples} / ${p.gas_data.samples}</div>
+                                        </div>
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Average Level</div>
+                                            <div class="profile-value">${p.gas_data.avg_raw}</div>
+                                        </div>
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Range</div>
+                                            <div class="profile-value">${p.gas_data.min_raw} – ${p.gas_data.max_raw}</div>
+                                        </div>
+                                        <div class="profile-data-item">
+                                            <div class="profile-label">Status</div>
+                                            <div class="profile-value" style="color: ${p.gas_data.status === 'SAFE' ? '#16a34a' : p.gas_data.status === 'MODERATE' ? '#eab308' : p.gas_data.status === 'NO_DATA' ? '#666' : '#dc2626'};">
+                                                ${p.gas_data.status === 'SAFE' ? 'Safe' : p.gas_data.status === 'MODERATE' ? 'Moderate' : p.gas_data.status === 'NO_DATA' ? 'No Data' : 'Hazardous'}
+                                            </div>
+                                        </div>
                                     </div>
                                 ` : `
-                                    <div class="profile-placeholder">No gas data collected</div>
+                                    <div class="profile-placeholder">Stable signal recorded</div>
                                 `}
                             </div>
                         </div>
