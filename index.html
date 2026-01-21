@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Machine Sound Calibration & Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;600;700&family=Roboto:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,51 +15,59 @@
         }
         
         body {
-            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            background: #0f0f0f;
             color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            padding: 20px;
+            font-family: 'Roboto Slab', serif;
+            font-weight: 400;
+            margin: 0;
             min-height: 100vh;
         }
-        
+
+        .header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Roboto Slab', serif;
+            font-weight: 700;
+            font-size: 40px;
+            color: #e0e0e0;
+            letter-spacing: 0.04em;
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
-        }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            background: linear-gradient(90deg, #22c55e, #3b82f6, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 42px;
-            font-weight: 800;
-            text-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+            padding: 30px;
         }
         
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #333;
+            gap: 0;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #333;
         }
-        
+
         .tab-btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             background: none;
             border: none;
             color: #888;
             cursor: pointer;
-            font-size: 16px;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
         }
-        
+
         .tab-btn.active {
-            color: #22c55e;
-            border-bottom-color: #22c55e;
+            color: #e0e0e0;
+            background: #2a2a2a;
+            border-bottom-color: #5a9bd5;
+            font-weight: 600;
         }
         
         .tab-content {
@@ -75,72 +86,67 @@
         }
         
         .machine-btn {
-            padding: 20px;
-            background: #1a2332;
-            border: 2px solid #333;
+            padding: 15px;
+            background: #1a1a1a;
+            border: 1px solid #333;
             color: #e0e0e0;
-            border-radius: 8px;
+            border-radius: 2px;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
         }
-        
+
         .machine-btn:hover {
-            border-color: #22c55e;
-            background: #1f2a38;
+            border-color: #5a9bd5;
+            background: #2a2a2a;
         }
-        
+
         .machine-btn.selected {
-            background: #22c55e;
+            background: #5a9bd5;
             color: #000;
-            border-color: #22c55e;
+            border-color: #5a9bd5;
         }
         
         .control-panel {
-            background: linear-gradient(145deg, #1a2332, #1f2937);
+            background: #1a1a1a;
             padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(34, 197, 94, 0.1);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            border-radius: 6px;
+            margin-bottom: 30px;
         }
-        
+
         .info-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
-            padding: 10px;
-            background: #0f1419;
-            border-radius: 5px;
+            align-items: center;
         }
-        
+
         .info-label {
-            font-weight: bold;
+            font-weight: 500;
             color: #888;
+            font-size: 12px;
         }
-        
+
         .info-value {
-            color: #22c55e;
-            font-weight: bold;
+            color: #5a9bd5;
+            font-weight: 600;
             font-size: 18px;
         }
-        
+
         button {
-            padding: 10px 20px;
-            background: #22c55e;
+            padding: 8px 16px;
+            background: #5a9bd5;
             border: none;
             color: #000;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: all 0.3s;
-            margin-right: 10px;
+            font-weight: 500;
+            font-size: 13px;
+            margin-right: 8px;
         }
-        
+
         button:hover {
-            background: #1ea850;
+            background: #4a8bc7;
         }
         
         button:disabled {
@@ -149,41 +155,39 @@
         }
         
         .stop-btn {
-            background: #ef4444;
+            background: #dc2626;
             color: white;
         }
         
         .stop-btn:hover {
-            background: #dc2626;
+            background: #b91c1c;
         }
         
         canvas {
             width: 100%;
             height: 300px;
             background: #000;
-            border-radius: 12px;
+            border-radius: 6px;
             margin-bottom: 20px;
-            border: 2px solid rgba(34, 197, 94, 0.2);
-            box-shadow: 0 0 30px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
         
         .status {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: bold;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: 500;
         }
-        
+
         .status.info {
             background: #1e3a8a;
             color: #93c5fd;
         }
-        
+
         .status.success {
-            background: #166534;
-            color: #86efac;
+            background: #0f5132;
+            color: #10b981;
         }
-        
+
         .status.error {
             background: #7f1d1d;
             color: #fca5a5;
@@ -195,52 +199,105 @@
         }
         
         .profile-card {
-            background: #1a2332;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #22c55e;
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 30px;
         }
-        
+
         .profile-header {
-            font-size: 18px;
-            font-weight: bold;
-            color: #22c55e;
-            margin-bottom: 15px;
+            font-family: 'Roboto Slab', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        
-        .delete-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
+
+        .profile-section {
+            margin-top: 30px;
+            margin-bottom: 25px;
+        }
+
+        .profile-section h4 {
+            font-family: 'Roboto Slab', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-content {
+            padding: 20px 0;
+        }
+
+        .profile-subcontent {
+            margin-top: 15px;
+            padding: 15px 0;
+        }
+
+        .profile-sublabel {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .profile-band {
+            font-size: 12px;
+            color: #5a9bd5;
+            padding: 2px 0;
+        }
+
+        .profile-placeholder {
+            color: #666;
+            font-size: 13px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .profile-footer {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
         }
         
+        .delete-btn {
+            background: none;
+            color: #888;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
         .delete-btn:hover {
-            background: #dc2626;
+            background: #7f1d1d;
+            color: white;
         }
         
         .profile-detail {
             display: flex;
             justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-            margin-bottom: 5px;
+            padding: 6px 0;
+            margin-bottom: 10px;
+            align-items: center;
         }
         
         .detection-status {
             font-size: 24px;
-            font-weight: bold;
+            font-weight: 600;
             padding: 20px;
             text-align: center;
-            background: #1a2332;
-            border-radius: 8px;
+            background: #2a2a2a;
+            border-radius: 4px;
             margin-bottom: 20px;
             min-height: 80px;
             display: flex;
@@ -255,16 +312,28 @@
         
         .timer {
             font-size: 32px;
-            font-weight: bold;
+            font-weight: 600;
             text-align: center;
-            color: #22c55e;
+            color: #3b82f6;
             margin: 20px 0;
         }
         
         h3 {
-            margin-top: 20px;
-            margin-bottom: 15px;
+            font-family: 'Roboto Slab', serif;
+            font-weight: 700;
+            font-size: 28px;
+            margin-top: 50px;
+            margin-bottom: 20px;
             color: #e0e0e0;
+            letter-spacing: 0.02em;
+        }
+
+        h4 {
+            font-family: 'Roboto Slab', serif;
+            font-weight: 600;
+            font-size: 20px;
+            color: #e0e0e0;
+            margin-bottom: 15px;
         }
         
         /* ========== NEW UI STYLES ========== */
@@ -275,14 +344,13 @@
             padding: 4px 12px;
             border-radius: 4px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
             margin-left: 10px;
         }
         .mode-badge.listening {
             background: #22c55e;
             color: #000;
-            animation: pulse 1.5s infinite;
         }
         .mode-badge.idle {
             background: #374151;
@@ -291,40 +359,31 @@
         .mode-badge.detecting {
             background: #3b82f6;
             color: #fff;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
         }
         
         /* Listen button per machine */
         .listen-btn {
             padding: 15px 20px;
-            background: #1a2332;
-            border: 2px solid #333;
+            background: #2a2a2a;
+            border: 1px solid #444;
             color: #e0e0e0;
-            border-radius: 8px;
+            border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s;
+            font-weight: 500;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
         }
         .listen-btn:hover:not(:disabled) {
-            border-color: #22c55e;
-            background: #1f2a38;
+            border-color: #3b82f6;
+            background: #333;
         }
         .listen-btn.listening {
             background: #166534;
             border-color: #22c55e;
             color: #86efac;
-        }
-        .listen-btn.has-profile {
-            border-left: 4px solid #22c55e;
         }
         .listen-btn .machine-name {
             font-size: 16px;
@@ -334,7 +393,7 @@
             color: #888;
         }
         .listen-btn.has-profile .profile-status {
-            color: #22c55e;
+            color: #16a34a;
         }
         
         /* Live dashboard grid */
@@ -352,26 +411,23 @@
         
         /* Sensor panel card */
         .sensor-panel {
-            background: #1a2332;
-            border-radius: 8px;
+            background: #1a1a1a;
+            border-radius: 6px;
             padding: 20px;
-            border-left: 4px solid #333;
-        }
-        .sensor-panel.active {
-            border-left-color: #22c55e;
         }
         .sensor-panel h4 {
-            margin: 0 0 15px 0;
+            margin: 0 0 10px 0;
             color: #888;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
         .sensor-panel .value-large {
-            font-size: 36px;
-            font-weight: bold;
-            color: #22c55e;
-            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 700;
+            color: #5a9bd5;
+            margin-bottom: 8px;
         }
         
         /* Gas status indicator */
@@ -380,35 +436,31 @@
             align-items: center;
             gap: 15px;
             padding: 15px;
-            border-radius: 8px;
-            background: #0f1419;
         }
         .gas-indicator .gas-value {
             font-size: 24px;
-            font-weight: bold;
+            font-weight: 600;
         }
         .gas-indicator .gas-label {
             font-size: 12px;
             color: #888;
         }
         .gas-indicator.safe {
-            border: 2px solid #22c55e;
+            border: 1px solid #22c55e;
         }
         .gas-indicator.safe .gas-value { color: #22c55e; }
         .gas-indicator.warning {
-            border: 2px solid #eab308;
+            border: 1px solid #eab308;
         }
         .gas-indicator.warning .gas-value { color: #eab308; }
         .gas-indicator.hazardous {
-            border: 2px solid #ef4444;
-            background: #1f0a0a;
+            border: 1px solid #dc2626;
+            background: #2a1a1a;
         }
-        .gas-indicator.hazardous .gas-value { color: #ef4444; }
+        .gas-indicator.hazardous .gas-value { color: #dc2626; }
         
         /* Vibration bar */
         .vibration-bar-container {
-            background: #0f1419;
-            border-radius: 8px;
             padding: 15px;
             margin-top: 10px;
         }
@@ -421,8 +473,7 @@
         }
         .vibration-bar .fill {
             height: 100%;
-            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
-            transition: width 0.2s;
+            background: #3b82f6;
             border-radius: 4px;
         }
         .vibration-label {
@@ -432,19 +483,19 @@
             color: #888;
         }
         .vibration-intensity {
-            font-weight: bold;
+            font-weight: 600;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 11px;
         }
-        .vibration-intensity.low { background: #166534; color: #86efac; }
+        .vibration-intensity.low { background: #064e3b; color: #34d399; }
         .vibration-intensity.medium { background: #854d0e; color: #fde047; }
         .vibration-intensity.high { background: #7f1d1d; color: #fca5a5; }
         
         /* Machine detection result card */
         .detected-machine-card {
-            background: #0f1419;
-            border-radius: 8px;
+            background: #1a1a1a;
+            border-radius: 6px;
             padding: 20px;
             text-align: center;
             min-height: 120px;
@@ -452,16 +503,14 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 2px solid #333;
         }
         .detected-machine-card.detected {
-            border-color: #22c55e;
-            background: #0a1f0a;
+            background: #0f1f0f;
         }
         .detected-machine-card .machine-name {
-            font-size: 28px;
-            font-weight: bold;
-            color: #22c55e;
+            font-size: 24px;
+            font-weight: 700;
+            color: #5a9bd5;
         }
         .detected-machine-card .confidence {
             font-size: 14px;
@@ -475,10 +524,10 @@
         
         /* Run check results */
         .check-results {
-            background: #1a2332;
-            border-radius: 8px;
+            background: #1a1a1a;
+            border-radius: 6px;
             padding: 20px;
-            margin-top: 20px;
+            margin-top: 30px;
         }
         .check-results h4 {
             margin: 0 0 15px 0;
@@ -488,14 +537,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            background: #0f1419;
-            border-radius: 5px;
-            margin-bottom: 8px;
+            padding: 10px 0;
+            margin-bottom: 12px;
         }
         .check-result-item .match {
             color: #22c55e;
-            font-weight: bold;
+            font-weight: 600;
         }
         .check-result-item .no-match {
             color: #666;
@@ -509,9 +556,7 @@
             margin-top: 15px;
         }
         .data-item {
-            background: #0f1419;
             padding: 10px;
-            border-radius: 5px;
             text-align: center;
         }
         .data-item .label {
@@ -521,8 +566,8 @@
         }
         .data-item .count {
             font-size: 18px;
-            font-weight: bold;
-            color: #22c55e;
+            font-weight: 600;
+            color: #3b82f6;
         }
         .data-item.inactive .count {
             color: #666;
@@ -534,6 +579,13 @@
         }
         .waveform-panel canvas {
             height: 150px;
+        }
+
+        .waveform-placeholder {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding: 40px;
         }
         
         /* Inactive/disabled panel state */
@@ -566,26 +618,14 @@
             border-radius: 3px;
         }
         .gas-limits .safe-limit { background: #052e16; color: #22c55e; }
-        .gas-limits .hazard-limit { background: #450a0a; color: #ef4444; }
+        .gas-limits .hazard-limit { background: #450a0a; color: #dc2626; }
         
         /* ========== CHART STYLES ========== */
         .chart-container {
-            background: #0f1419;
-            border-radius: 8px;
+            background: #0f0f0f;
+            border-radius: 6px;
             padding: 15px;
             margin-top: 15px;
-            border: 1px solid #333;
-            position: relative;
-            overflow: hidden;
-        }
-        .chart-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #22c55e, transparent);
         }
         .chart-title {
             font-size: 12px;
@@ -593,7 +633,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 10px;
-            font-weight: bold;
+            font-weight: 600;
         }
         .mini-chart {
             width: 100%;
@@ -618,28 +658,22 @@
             margin-top: 15px;
         }
         .stat-card {
-            background: linear-gradient(135deg, #1a2332, #1f2937);
+            background: #1a1a1a;
             padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            transition: all 0.3s;
-        }
-        .stat-card:hover {
-            border-color: #22c55e;
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
-            transform: translateY(-2px);
+            border-radius: 6px;
         }
         .stat-label {
-            font-size: 11px;
+            font-size: 10px;
             color: #888;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-weight: 400;
         }
         .stat-value {
-            font-size: 22px;
-            font-weight: bold;
-            color: #22c55e;
+            font-size: 20px;
+            font-weight: 600;
+            color: #5a9bd5;
         }
         .stat-unit {
             font-size: 12px;
@@ -650,15 +684,14 @@
         /* Progress bars */
         .progress-bar {
             height: 8px;
-            background: #1a2332;
+            background: #1a1a1a;
             border-radius: 4px;
             overflow: hidden;
             margin-top: 8px;
         }
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #22c55e, #10b981);
-            transition: width 0.3s;
+            background: #3b82f6;
             border-radius: 4px;
         }
         
@@ -672,14 +705,9 @@
         }
         .freq-band {
             flex: 1;
-            background: linear-gradient(180deg, #22c55e, #166534);
+            background: #3b82f6;
             border-radius: 3px 3px 0 0;
-            transition: all 0.3s;
             position: relative;
-        }
-        .freq-band:hover {
-            background: linear-gradient(180deg, #3b82f6, #1e40af);
-            transform: scaleY(1.1);
         }
         .freq-band-label {
             position: absolute;
@@ -693,8 +721,10 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <div class="logo">VISO</div>
+    </div>
     <div class="container">
-        <h1>Machine Sound Calibration & Detection</h1>
         
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(event, 'calibration')">Calibration</button>
@@ -708,7 +738,7 @@
             <div class="status info" id="calibration-status">Click "Start Listening" on a machine to begin calibration</div>
             
             <h3>Start Listening – Per Machine <span class="mode-badge idle" id="cal-mode-badge">IDLE</span></h3>
-            <p style="color: #888; margin-bottom: 15px; font-size: 13px;">
+            <p style="color: #888; margin-bottom: 25px; font-size: 14px; font-weight: 400;">
                 Each machine profile captures: Audio signature + Vibration pattern + Gas/air quality data
             </p>
             
@@ -719,8 +749,8 @@
             
             <!-- Calibration Control Panel -->
             <div class="control-panel" id="calibration-control-panel" style="display:none;">
-                <h4 style="color: #22c55e; margin-bottom: 15px;">
-                    🎤 Listening for: <span id="cal-active-machine">--</span>
+                <h4 style="color: #5a9bd5; margin-bottom: 10px; font-weight: 600;">
+                    Listening for: <span id="cal-active-machine">--</span>
                 </h4>
                 
                 <div class="info-row">
@@ -785,15 +815,19 @@
             <div id="calibration-waveform-container" style="display:none;">
                 <h3>Live Audio Waveform:</h3>
                 <canvas id="calibration-canvas"></canvas>
-                
+
                 <div class="chart-container">
                     <div class="chart-title">Frequency Spectrum Analysis</div>
                     <canvas id="calibration-spectrum" class="spectrum-chart"></canvas>
                 </div>
-                
+
                 <div class="chart-container">
                     <div class="chart-title">Amplitude History (Last 60 samples)</div>
                     <canvas id="calibration-history" class="history-chart"></canvas>
+                </div>
+
+                <div id="calibration-placeholder" class="waveform-placeholder" style="display:none;">
+                    <p style="color: #666; text-align: center; padding: 40px; font-size: 14px;">No audio samples captured yet. Start listening to see live data.</p>
                 </div>
             </div>
         </div>
@@ -803,7 +837,7 @@
             <div class="status info" id="runcheck-status">Click "Run Check" to compare current audio against stored profiles</div>
             
             <h3>Run Check for Machine</h3>
-            <p style="color: #888; margin-bottom: 20px; font-size: 13px;">
+            <p style="color: #888; margin-bottom: 25px; font-size: 14px; font-weight: 400;">
                 Performs a one-time check to identify which machine (if any) matches the current sound.
                 No live graphs – logical check only.
             </p>
@@ -838,6 +872,9 @@
             <div class="status info" id="livedetection-status">Click "Start Machine Detecting" to begin live monitoring</div>
             
             <h3>Live Detection Dashboard <span class="mode-badge idle" id="live-mode-badge">IDLE</span></h3>
+            <p style="color: #888; margin-bottom: 25px; font-size: 14px; font-weight: 400;">
+                Real-time monitoring of machine audio, vibration, and air quality sensors
+            </p>
             
             <div style="margin-bottom: 20px;">
                 <button id="live-start-btn" onclick="startLiveDetection()" style="font-size: 16px; padding: 15px 30px;">
@@ -846,7 +883,7 @@
                 <button id="live-stop-btn" class="stop-btn" onclick="stopLiveDetection()" disabled>
                     Stop Detection
                 </button>
-                <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()" style="display: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); font-size: 16px; padding: 15px 30px; margin-left: 10px;">
+                <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()" style="display: none; background: #5a9bd5; font-size: 14px; padding: 10px 20px; margin-left: 8px;">
                     Send Session to Gemini AI
                 </button>
             </div>
@@ -877,17 +914,17 @@
                     <h4>Gas / Air Quality</h4>
                     <div class="gas-indicator safe" id="live-gas-indicator">
                         <div>
-                            <div class="gas-value" id="live-gas-value">--</div>
+                            <div class="gas-value" id="live-gas-value">No data</div>
                             <div class="gas-label">Raw Value</div>
                         </div>
                         <div style="flex: 1; text-align: right;">
-                            <div style="font-size: 20px; font-weight: bold;" id="live-gas-status-text">--</div>
+                            <div style="font-size: 20px; font-weight: 600;" id="live-gas-status-text">Sensor offline</div>
                             <div class="gas-label">Status</div>
                         </div>
                     </div>
                     <div class="gas-limits">
-                        <span class="safe-limit">Safe: &lt; 300</span>
-                        <span class="hazard-limit">Hazardous: &gt; 700</span>
+                        <span class="safe-limit">Safe: < 300</span>
+                        <span class="hazard-limit">Hazardous: > 700</span>
                     </div>
                     
                     <div class="chart-container">
@@ -899,14 +936,14 @@
                 <!-- C. Vibration Monitoring -->
                 <div class="sensor-panel" id="panel-vibration">
                     <h4>Vibration Monitoring</h4>
-                    <div class="value-large" id="live-vibration-value">--</div>
+                    <div class="value-large" id="live-vibration-value">No data</div>
                     <div class="vibration-bar-container">
                         <div class="vibration-bar">
                             <div class="fill" id="live-vibration-bar" style="width: 0%;"></div>
                         </div>
                         <div class="vibration-label">
                             <span>0</span>
-                            <span class="vibration-intensity low" id="live-vibration-intensity">--</span>
+                            <span class="vibration-intensity low" id="live-vibration-intensity">N/A</span>
                             <span>100</span>
                         </div>
                     </div>
@@ -953,11 +990,11 @@
                     <div class="stats-grid" style="margin-top: 15px;">
                         <div class="stat-card">
                             <div class="stat-label">Peak Amplitude</div>
-                            <div class="stat-value" id="live-peak-amp">0.0</div>
+                            <div class="stat-value" id="live-peak-amp">N/A</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Average Level</div>
-                            <div class="stat-value" id="live-avg-amp">0.0</div>
+                            <div class="stat-value" id="live-avg-amp">N/A</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Samples/sec</div>
@@ -974,7 +1011,11 @@
         
         <!-- ===== PROFILES TAB ===== -->
         <div id="profiles" class="tab-content">
-            <button onclick="loadProfiles()" style="margin-bottom: 20px;">Refresh Profiles</button>
+            <h3>Machine Profiles</h3>
+            <p style="color: #888; margin-bottom: 25px; font-size: 14px; font-weight: 400;">
+                Stored calibration data for each machine type
+            </p>
+            <button onclick="loadProfiles()" style="margin-bottom: 30px;">Refresh Profiles</button>
             <div id="profiles-list" class="profiles-list">
                 <p style="color: #888;">Loading profiles...</p>
             </div>
@@ -1602,85 +1643,82 @@
                             <span>${p.machine_id.replace('_', ' ').toUpperCase()}</span>
                             <button class="delete-btn" onclick="deleteProfile('${p.machine_id}')">🗑️ Delete</button>
                         </div>
-                        
-                        <!-- Audio Section -->
-                        <div style="margin-top: 10px; padding: 10px; background: #0f1419; border-radius: 5px; border-left: 3px solid #3b82f6;">
-                            <div style="color: #3b82f6; font-weight: bold; margin-bottom: 8px; font-size: 13px;">🔊 Audio Signature</div>
-                            <div class="profile-detail">
-                                <span>Median Frequency:</span>
-                                <strong>${p.median_freq} Hz</strong>
+
+                        <div class="profile-section">
+                            <h4>Audio Signature</h4>
+                            <div class="profile-content">
+                                <div class="profile-detail">
+                                    <span>Median Frequency:</span>
+                                    <strong>${p.median_freq} Hz</strong>
+                                </div>
+                                <div class="profile-detail">
+                                    <span>Overall IQR Range:</span>
+                                    <strong>${p.iqr_low} – ${p.iqr_high} Hz</strong>
+                                </div>
+                                <div class="profile-detail">
+                                    <span>Frequency Bands:</span>
+                                    <strong>${p.bands_count || 0} bands</strong>
+                                </div>
+                                ${p.freq_bands && p.freq_bands.length > 0 ? `
+                                    <div class="profile-subcontent">
+                                        <div class="profile-sublabel">Detected Harmonic Bands:</div>
+                                        ${p.freq_bands.map((b, i) => `
+                                            <div class="profile-band">Band ${i+1}: ${b.low.toFixed(0)} – ${b.high.toFixed(0)} Hz (${b.samples} samples)</div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
                             </div>
-                            <div class="profile-detail">
-                                <span>Overall IQR Range:</span>
-                                <strong>${p.iqr_low} – ${p.iqr_high} Hz</strong>
+                        </div>
+
+                        <div class="profile-section">
+                            <h4>Vibration Pattern</h4>
+                            <div class="profile-content">
+                                ${p.vibration_data ? `
+                                    <div class="profile-detail">
+                                        <span>Samples Collected:</span>
+                                        <strong>${p.vibration_data.samples}</strong>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <span>Vibration Level:</span>
+                                        <strong style="color: #16a34a;">
+                                            ${(100 - p.vibration_data.vibration_percent).toFixed(1)}% vibration
+                                        </strong>
+                                    </div>
+                                ` : `
+                                    <div class="profile-placeholder">No vibration data collected</div>
+                                `}
                             </div>
-                            <div class="profile-detail">
-                                <span>Frequency Bands:</span>
-                                <strong>${p.bands_count || 0} bands</strong>
+                        </div>
+
+                        <div class="profile-section">
+                            <h4>Air Quality</h4>
+                            <div class="profile-content">
+                                ${p.gas_data ? `
+                                    <div class="profile-detail">
+                                        <span>Samples Collected:</span>
+                                        <strong>${p.gas_data.valid_samples || p.gas_data.samples} / ${p.gas_data.samples}</strong>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <span>Average Gas Level:</span>
+                                        <strong>${p.gas_data.avg_raw}</strong>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <span>Range:</span>
+                                        <strong>${p.gas_data.min_raw} – ${p.gas_data.max_raw}</strong>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <span>Status:</span>
+                                        <strong style="color: ${p.gas_data.status === 'SAFE' ? '#16a34a' : p.gas_data.status === 'MODERATE' ? '#eab308' : p.gas_data.status === 'NO_DATA' ? '#666' : '#dc2626'};">
+                                            ${p.gas_data.status === 'SAFE' ? '✓ Safe (<800)' : p.gas_data.status === 'MODERATE' ? '⚠️ Moderate (800-2000)' : p.gas_data.status === 'NO_DATA' ? '❓ No valid readings' : '🚨 Hazardous (>2000)'}
+                                        </strong>
+                                    </div>
+                                ` : `
+                                    <div class="profile-placeholder">No gas data collected</div>
+                                `}
                             </div>
-                            ${p.freq_bands && p.freq_bands.length > 0 ? `
-                                <div style="margin-top: 8px; padding: 8px; background: #1a2332; border-radius: 4px;">
-                                    <div style="color: #888; margin-bottom: 5px; font-size: 11px;">Detected Harmonic Bands:</div>
-                                    ${p.freq_bands.map((b, i) => `
-                                        <div style="font-size: 12px; color: #22c55e; padding: 2px 0;">
-                                            Band ${i+1}: ${b.low.toFixed(0)} – ${b.high.toFixed(0)} Hz (${b.samples} samples)
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
                         </div>
-                        
-                        <!-- Vibration Section -->
-                        <div style="margin-top: 10px; padding: 10px; background: #0f1419; border-radius: 5px; border-left: 3px solid #f59e0b;">
-                            <div style="color: #f59e0b; font-weight: bold; margin-bottom: 8px; font-size: 13px;">📳 Vibration Pattern</div>
-                            ${p.vibration_data ? `
-                                <div class="profile-detail">
-                                    <span>Samples Collected:</span>
-                                    <strong>${p.vibration_data.samples}</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Vibration Activity:</span>
-                                    <strong style="color: #22c55e;">
-                                        ${p.vibration_data.vibration_percent.toFixed(1)}% active
-                                    </strong>
-                                </div>
-                            ` : `
-                                <div style="color: #666; font-size: 12px;">No vibration data collected</div>
-                            `}
-                        </div>
-                        
-                        <!-- Gas/Air Quality Section -->
-                        <div style="margin-top: 10px; padding: 10px; background: #0f1419; border-radius: 5px; border-left: 3px solid ${
-                            p.gas_data ? (p.gas_data.status === 'SAFE' ? '#22c55e' : p.gas_data.status === 'MODERATE' ? '#f59e0b' : p.gas_data.status === 'NO_DATA' ? '#666' : '#ef4444') : '#666'
-                        };">
-                            <div style="color: ${
-                                p.gas_data ? (p.gas_data.status === 'SAFE' ? '#22c55e' : p.gas_data.status === 'MODERATE' ? '#f59e0b' : p.gas_data.status === 'NO_DATA' ? '#666' : '#ef4444') : '#666'
-                            }; font-weight: bold; margin-bottom: 8px; font-size: 13px;">💨 Air Quality</div>
-                            ${p.gas_data ? `
-                                <div class="profile-detail">
-                                    <span>Samples Collected:</span>
-                                    <strong>${p.gas_data.valid_samples || p.gas_data.samples} / ${p.gas_data.samples}</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Average Gas Level:</span>
-                                    <strong>${p.gas_data.avg_raw}</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Range:</span>
-                                    <strong>${p.gas_data.min_raw} – ${p.gas_data.max_raw}</strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Status:</span>
-                                    <strong style="color: ${p.gas_data.status === 'SAFE' ? '#22c55e' : p.gas_data.status === 'MODERATE' ? '#f59e0b' : p.gas_data.status === 'NO_DATA' ? '#666' : '#ef4444'};">
-                                        ${p.gas_data.status === 'SAFE' ? '✓ Safe (<800)' : p.gas_data.status === 'MODERATE' ? '⚠️ Moderate (800-2000)' : p.gas_data.status === 'NO_DATA' ? '❓ No valid readings' : '🚨 Hazardous (>2000)'}
-                                    </strong>
-                                </div>
-                            ` : `
-                                <div style="color: #666; font-size: 12px;">No gas data collected</div>
-                            `}
-                        </div>
-                        
-                        <div style="margin-top: 10px; font-size: 11px; color: #666;">
+
+                        <div class="profile-footer">
                             Created: ${p.created_at || 'Unknown'}
                         </div>
                     </div>
@@ -1723,13 +1761,8 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             
-            // Draw gradient waveform
-            const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-            gradient.addColorStop(0, '#22c55e');
-            gradient.addColorStop(0.5, '#3b82f6');
-            gradient.addColorStop(1, '#a855f7');
-            
-            ctx.strokeStyle = gradient;
+            // Draw simple waveform
+            ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
             ctx.beginPath();
             
@@ -1757,18 +1790,14 @@
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
-            // Draw bars with gradient
+            // Draw bars
             const barWidth = width / frequencyData.length;
-            const gradient = ctx.createLinearGradient(0, height, 0, 0);
-            gradient.addColorStop(0, '#22c55e');
-            gradient.addColorStop(0.5, '#3b82f6');
-            gradient.addColorStop(1, '#ef4444');
             
             for (let i = 0; i < frequencyData.length; i++) {
                 const barHeight = (frequencyData[i] / 255) * height;
                 const x = i * barWidth;
                 
-                ctx.fillStyle = gradient;
+                ctx.fillStyle = '#3b82f6';
                 ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
             }
             
@@ -1795,12 +1824,8 @@
             // Find max for scaling
             const max = Math.max(...dataArray, 1);
             
-            // Draw gradient line
-            const gradient = ctx.createLinearGradient(0, 0, width, 0);
-            gradient.addColorStop(0, '#3b82f6');
-            gradient.addColorStop(1, '#22c55e');
-            
-            ctx.strokeStyle = gradient;
+            // Draw line
+            ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
             ctx.beginPath();
             
@@ -1810,16 +1835,6 @@
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.stroke();
-            
-            // Draw filled area
-            ctx.lineTo(width, height);
-            ctx.lineTo(0, height);
-            ctx.closePath();
-            const fillGradient = ctx.createLinearGradient(0, 0, 0, height);
-            fillGradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
-            fillGradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
-            ctx.fillStyle = fillGradient;
-            ctx.fill();
             
             // Draw grid lines
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
@@ -1839,7 +1854,7 @@
             ctx.fillText('Max: ' + max.toFixed(1), width - 5, 12);
         }
         
-        function drawMiniLineChart(dataArray, ctx, color = '#22c55e', maxValue = null, chartType = null) {
+        function drawMiniLineChart(dataArray, ctx, color = '#3b82f6', maxValue = null, chartType = null) {
             if (!ctx || dataArray.length === 0) return;
             
             // Ensure canvas has proper dimensions
@@ -2295,17 +2310,17 @@
                         liveGasCanvas.width = Math.max(liveGasCanvas.offsetWidth, 400);
                         liveGasCanvas.height = Math.max(liveGasCanvas.offsetHeight, 80);
                     }
-                    drawMiniLineChart(gasHistory, liveGasCtx, '#f59e0b', 5000, 'gas');
+                    drawMiniLineChart(gasHistory, liveGasCtx, '#eab308', 5000, 'gas');
                 }
                 
                 const liveVibCanvas = document.getElementById('live-vibration-chart');
                 if (liveVibCanvas && vibrationHistory.length > 0) {
                     if (!liveVibrationCtx || liveVibCanvas.width === 0 || liveVibCanvas.height === 0) {
-                        liveVibrationCtx = liveVibCanvas.getContext('2d');
+                        liveVibrationCtx = liveVibrationCtx || liveVibCanvas.getContext('2d');
                         liveVibCanvas.width = Math.max(liveVibCanvas.offsetWidth, 400);
                         liveVibCanvas.height = Math.max(liveVibCanvas.offsetHeight, 80);
                     }
-                    drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#ef4444', 100, 'vibration');
+                    drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#dc2626', 100, 'vibration');
                 }
                 
             } catch (err) {
