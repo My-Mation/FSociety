@@ -509,6 +509,7 @@ def ingest():
 
             # ✅ NEW: Track machines detected in this batch
             running_machines = set()
+            anomaly_machines = set()
             inserted_count = 0
 
             for frame in frames:
@@ -516,11 +517,9 @@ def ingest():
                 peaks = frame.get("peaks", [])  # Array of {freq, amp}
                 timestamp = frame.get("timestamp")
 
-                # If not forcing storage, skip low-amplitude/no-peak frames
                 if not store_all and (amplitude < AMPLITUDE_THRESHOLD or len(peaks) == 0):
                     continue
 
-                # Update noise model regardless
                 z_score, anomaly = noise_model.update(amplitude)
 
                 if len(peaks) > 0:
@@ -532,7 +531,6 @@ def ingest():
 
                 ts = datetime.fromtimestamp(timestamp / 1000) if timestamp else datetime.now()
 
-                # Database insert
                 cursor.execute(
                     """
                     INSERT INTO raw_audio
@@ -553,30 +551,30 @@ def ingest():
 
                 # Multi-machine detection using peaks if present
                 if len(peaks) > 0:
-                    machines_in_frame = identify_machines(peaks)
-                    running_machines.update(machines_in_frame)
+                    result = identify_machines(peaks)
+                    running_machines.update(result["detected"])
+                    anomaly_machines.update(result["anomaly"])
 
             conn.commit()
 
-            # ✅ NEW: Update temporal stability tracking
             cursor.execute("SELECT machine_id FROM machine_profiles")
             all_machines = [row[0] for row in cursor.fetchall()]
             update_detection_history(running_machines, all_machines)
-            
-            # ✅ NEW: Apply temporal stability filter (60% of recent batches)
             stable_machines = get_stable_machines(all_machines)
 
             print(f"\n[OK] LIVE BATCH: {len(frames)} frames, {inserted_count} inserted (store_all={store_all})")
             print(f"   Detected (raw): {sorted(running_machines)}")
             print(f"   Stable machines: {sorted(stable_machines)}")
+            print(f"   Anomaly machines: {sorted(anomaly_machines)}")
 
             return jsonify({
                 "status": "ok",
                 "frames_received": len(frames),
                 "frames_captured": frames_captured,
                 "frames_inserted": inserted_count,
-                "running_machines": sorted(stable_machines),  # ✅ MAIN OUTPUT
-                "running_machines_raw": sorted(running_machines),  # For debugging
+                "running_machines": sorted(stable_machines),
+                "running_machines_raw": sorted(running_machines),
+                "anomaly_machines": sorted(anomaly_machines),
                 "all_machines": all_machines
             })
 
@@ -611,63 +609,61 @@ def identify_machines(peaks_list):
         List of machine_ids detected in this frame
     """
     if not peaks_list or len(peaks_list) == 0:
-        return []
+        return {"detected": [], "anomaly": []}
 
     cursor = conn.cursor()
-    
     try:
-        # Fetch all machine profiles with freq_bands
         cursor.execute(
             "SELECT machine_id, freq_bands, iqr_low, iqr_high FROM machine_profiles ORDER BY machine_id"
         )
         profiles = cursor.fetchall()
-
         if not profiles:
-            return []
+            return {"detected": [], "anomaly": []}
 
         detected_machines = set()
+        anomaly_machines = set()
 
         for machine_id, freq_bands, iqr_low, iqr_high in profiles:
-            # If freq_bands exists, use multi-band matching (new method)
             if freq_bands and len(freq_bands) > 0:
                 match_count = 0
-                
+                anomaly_count = 0
                 for band in freq_bands:
                     band_low = band.get("low", 0)
                     band_high = band.get("high", 0)
-                    
-                    # Check if any peak matches this band
                     for peak in peaks_list:
                         freq = peak.get("freq")
                         amp = peak.get("amp", 0)
-                        
-                        # Skip weak peaks
                         if not freq or freq <= 0 or amp < MIN_PEAK_AMP:
                             continue
-                        
                         if band_low <= freq <= band_high:
                             match_count += 1
-                            break  # One peak per band is enough
-                
-                # REQUIRE ≥2 band matches for detection
+                            break
+                        # Check for anomaly: within 5-10Hz outside the band
+                        elif (band_low - 10 <= freq < band_low - 5) or (band_high + 5 < freq <= band_high + 10):
+                            anomaly_count += 1
+                            break
                 if match_count >= MIN_BAND_MATCHES:
                     detected_machines.add(machine_id)
-            
-            # Fallback to legacy IQR matching (for old profiles without freq_bands)
+                elif anomaly_count >= MIN_BAND_MATCHES:
+                    anomaly_machines.add(machine_id)
             elif iqr_low is not None and iqr_high is not None:
+                normal = False
+                anomaly = False
                 for peak in peaks_list:
                     freq = peak.get("freq")
                     amp = peak.get("amp", 0)
-                    
                     if not freq or freq <= 0 or amp < MIN_PEAK_AMP:
                         continue
-                    
                     if iqr_low <= freq <= iqr_high:
-                        detected_machines.add(machine_id)
-                        break
+                        normal = True
+                    elif (iqr_low - 10 <= freq < iqr_low - 5) or (iqr_high + 5 < freq <= iqr_high + 10):
+                        anomaly = True
+                if normal:
+                    detected_machines.add(machine_id)
+                elif anomaly:
+                    anomaly_machines.add(machine_id)
 
-        return list(detected_machines)
-
+        return {"detected": list(detected_machines), "anomaly": list(anomaly_machines)}
     finally:
         cursor.close()
 
@@ -709,14 +705,15 @@ def save_profile():
             # Count how many samples had vibration (value 0)
             vibration_count = sum(1 for v in vibration_samples if v == 0)
             total_samples = len(vibration_samples)
-            vibration_percent = (vibration_count / total_samples) * 100 if total_samples > 0 else 0
+            # Invert: 100% = no vibration, 0% = full vibration
+            vibration_percent = (1 - (vibration_count / total_samples)) * 100 if total_samples > 0 else 0
             avg_raw = sum(vibration_samples) / total_samples if total_samples > 0 else 0
             vibration_data = {
                 "samples": total_samples,
                 "vibration_detected_count": vibration_count,
                 "vibration_percent": round(vibration_percent, 1),
                 "avg_raw_value": round(avg_raw, 3),
-                "has_vibration": vibration_percent > 50
+                "has_vibration": vibration_percent < 50
             }
         
         # Process gas data
@@ -933,13 +930,23 @@ def get_profiles():
             gas_data = row[6]
             created_at = row[7]
 
-            # Safely round numeric values that may be NULL in DB
             def safe_round(val):
                 return round(val, 2) if val is not None else None
 
             iqr_val = None
             if iqr_low is not None and iqr_high is not None:
                 iqr_val = round(iqr_high - iqr_low, 2)
+
+            # Add human-readable vibration status
+            vibration_status_text = None
+            if vibration_data and "vibration_percent" in vibration_data:
+                percent = vibration_data["vibration_percent"]
+                if percent >= 99.9:
+                    vibration_status_text = "No vibration detected"
+                elif percent <= 0.1:
+                    vibration_status_text = "Always vibrating"
+                else:
+                    vibration_status_text = f"Intermittent vibration: {100-percent:.1f}% active"
 
             profiles.append({
                 "machine_id": machine_id,
@@ -950,6 +957,7 @@ def get_profiles():
                 "freq_bands": freq_bands if freq_bands else [],
                 "bands_count": len(freq_bands) if freq_bands else 0,
                 "vibration_data": vibration_data,
+                "vibration_status_text": vibration_status_text,
                 "gas_data": gas_data,
                 "created_at": str(created_at) if created_at is not None else None
             })

@@ -694,13 +694,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎵 Machine Sound Calibration & Detection</h1>
+        <h1>Machine Sound Calibration & Detection</h1>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab(event, 'calibration')">📊 Calibration</button>
-            <button class="tab-btn" onclick="switchTab(event, 'runcheck')">🔎 Run Check</button>
-            <button class="tab-btn" onclick="switchTab(event, 'livedetection')">🔍 Live Detection</button>
-            <button class="tab-btn" onclick="switchTab(event, 'profiles')">⚙️ Profiles</button>
+            <button class="tab-btn active" onclick="switchTab(event, 'calibration')">Calibration</button>
+            <button class="tab-btn" onclick="switchTab(event, 'runcheck')">Run Check</button>
+            <button class="tab-btn" onclick="switchTab(event, 'livedetection')">Live Detection</button>
+            <button class="tab-btn" onclick="switchTab(event, 'profiles')">Profiles</button>
         </div>
         
         <!-- ===== CALIBRATION TAB (Per-Machine Listening) ===== -->
@@ -731,36 +731,44 @@
                 <!-- Data Collection Stats Grid -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">🎵 Audio Frames</div>
+                        <div class="stat-label">Audio Frames</div>
                         <div class="stat-value" id="cal-frames">0</div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="cal-frames-progress" style="width: 0%;"></div>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">📳 Vibration</div>
+                        <div class="stat-label">Vibration</div>
                         <div class="stat-value" id="cal-vib-count">0</div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="cal-vib-progress" style="width: 0%;"></div>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">💨 Gas Samples</div>
+                        <div class="stat-label">Gas Samples</div>
                         <div class="stat-value" id="cal-gas-count">0</div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="cal-gas-progress" style="width: 0%;"></div>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">📊 Avg Amplitude</div>
+                        <div class="stat-label">Avg Amplitude</div>
                         <div class="stat-value" id="cal-avg-amp">0.0</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">🔊 Peak Frequency</div>
+                        <div class="stat-label">Peak Frequency</div>
                         <div class="stat-value"><span id="cal-peak-freq">0</span><span class="stat-unit">Hz</span></div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">⏱️ Time Remaining</div>
+                        <div class="stat-label">Current Amplitude</div>
+                        <div class="stat-value" id="cal-current-amp">0.0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Current Frequency</div>
+                        <div class="stat-value" id="cal-current-freq">0.0 Hz</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Time Remaining</div>
                         <div class="stat-value" id="cal-time-remain">60s</div>
                     </div>
                 </div>
@@ -768,8 +776,8 @@
                 <div class="timer" id="calibration-timer">0s</div>
                 
                 <div style="margin-top: 15px;">
-                    <button id="calibration-stop" class="stop-btn" onclick="stopCalibration()">⏹️ Stop Listening</button>
-                    <button id="calibration-save" onclick="saveProfile()" disabled style="background: #3b82f6;">💾 Save Profile</button>
+                    <button id="calibration-stop" class="stop-btn" onclick="stopCalibration()">Stop Listening</button>
+                    <button id="calibration-save" onclick="saveProfile()" disabled style="background: #3b82f6;">Save Profile</button>
                 </div>
             </div>
             
@@ -779,12 +787,12 @@
                 <canvas id="calibration-canvas"></canvas>
                 
                 <div class="chart-container">
-                    <div class="chart-title">📊 Frequency Spectrum Analysis</div>
+                    <div class="chart-title">Frequency Spectrum Analysis</div>
                     <canvas id="calibration-spectrum" class="spectrum-chart"></canvas>
                 </div>
                 
                 <div class="chart-container">
-                    <div class="chart-title">📈 Amplitude History (Last 60 samples)</div>
+                    <div class="chart-title">Amplitude History (Last 60 samples)</div>
                     <canvas id="calibration-history" class="history-chart"></canvas>
                 </div>
             </div>
@@ -802,10 +810,10 @@
             
             <div class="control-panel">
                 <button id="runcheck-btn" onclick="runCheck()" style="font-size: 16px; padding: 15px 30px;">
-                    🔎 Run Check for Machine
+                    Run Check for Machine
                 </button>
                 <button id="runcheck-stop" class="stop-btn" onclick="stopRunCheck()" disabled style="margin-left: 10px;">
-                    ⏹️ Stop
+                    Stop
                 </button>
                 
                 <div id="runcheck-progress" style="display: none; margin-top: 15px;">
@@ -818,7 +826,7 @@
             
             <!-- Check Results (shown after check completes) -->
             <div class="check-results" id="runcheck-results" style="display: none;">
-                <h4>🔍 Check Results</h4>
+                <h4>Check Results</h4>
                 <div id="runcheck-results-list">
                     <!-- Populated by JS -->
                 </div>
@@ -833,13 +841,13 @@
             
             <div style="margin-bottom: 20px;">
                 <button id="live-start-btn" onclick="startLiveDetection()" style="font-size: 16px; padding: 15px 30px;">
-                    🎤 Start Machine Detecting
+                    Start Machine Detecting
                 </button>
                 <button id="live-stop-btn" class="stop-btn" onclick="stopLiveDetection()" disabled>
-                    ⏹️ Stop Detection
+                    Stop Detection
                 </button>
                 <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()" style="display: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); font-size: 16px; padding: 15px 30px; margin-left: 10px;">
-                    🔮 Send Session to Gemini AI
+                    Send Session to Gemini AI
                 </button>
             </div>
             
@@ -848,7 +856,7 @@
                 
                 <!-- A. Machine Detection -->
                 <div class="sensor-panel" id="panel-machine">
-                    <h4>🔧 Machine Detection</h4>
+                    <h4>Machine Detection</h4>
                     <div class="detected-machine-card no-detection" id="live-machine-card">
                         <div class="machine-name" id="live-detected-machine">--</div>
                         <div class="confidence" id="live-detection-confidence">Waiting...</div>
@@ -859,14 +867,14 @@
                     </div>
                     
                     <div class="chart-container">
-                        <div class="chart-title">🔎 Detection Confidence</div>
+                        <div class="chart-title">Detection Confidence</div>
                         <canvas id="live-confidence-chart" class="mini-chart"></canvas>
                     </div>
                 </div>
                 
                 <!-- B. Gas / Air Quality -->
                 <div class="sensor-panel" id="panel-gas">
-                    <h4>💨 Gas / Air Quality</h4>
+                    <h4>Gas / Air Quality</h4>
                     <div class="gas-indicator safe" id="live-gas-indicator">
                         <div>
                             <div class="gas-value" id="live-gas-value">--</div>
@@ -883,14 +891,14 @@
                     </div>
                     
                     <div class="chart-container">
-                        <div class="chart-title">📉 Gas Level History</div>
+                        <div class="chart-title">Gas Level History</div>
                         <canvas id="live-gas-chart" class="mini-chart"></canvas>
                     </div>
                 </div>
                 
                 <!-- C. Vibration Monitoring -->
                 <div class="sensor-panel" id="panel-vibration">
-                    <h4>📳 Vibration Monitoring</h4>
+                    <h4>Vibration Monitoring</h4>
                     <div class="value-large" id="live-vibration-value">--</div>
                     <div class="vibration-bar-container">
                         <div class="vibration-bar">
@@ -908,14 +916,14 @@
                     </div>
                     
                     <div class="chart-container">
-                        <div class="chart-title">📈 Vibration Pattern (Higher = More Activity)</div>
+                        <div class="chart-title">Vibration Pattern (Higher = More Activity)</div>
                         <canvas id="live-vibration-chart" class="mini-chart"></canvas>
                     </div>
                 </div>
                 
                 <!-- D. Audio Info -->
                 <div class="sensor-panel" id="panel-audio-info">
-                    <h4>🎵 Audio Analysis</h4>
+                    <h4>Audio Analysis</h4>
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Frequency</div>
@@ -932,31 +940,31 @@
                     </div>
                     
                     <div class="chart-container">
-                        <div class="chart-title">🎼 Frequency Spectrum</div>
+                        <div class="chart-title">Frequency Spectrum</div>
                         <canvas id="live-spectrum-chart" class="spectrum-chart"></canvas>
                     </div>
                 </div>
                 
                 <!-- E. Live Waveform (spans full width) -->
                 <div class="sensor-panel waveform-panel" id="panel-waveform">
-                    <h4>📊 Live Audio Waveform</h4>
+                    <h4>Live Audio Waveform</h4>
                     <canvas id="live-canvas"></canvas>
                     
                     <div class="stats-grid" style="margin-top: 15px;">
                         <div class="stat-card">
-                            <div class="stat-label">🔊 Peak Amplitude</div>
+                            <div class="stat-label">Peak Amplitude</div>
                             <div class="stat-value" id="live-peak-amp">0.0</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">🔽 Average Level</div>
+                            <div class="stat-label">Average Level</div>
                             <div class="stat-value" id="live-avg-amp">0.0</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">📡 Samples/sec</div>
+                            <div class="stat-label">Samples/sec</div>
                             <div class="stat-value" id="live-sample-rate">0</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">⏱️ Running Time</div>
+                            <div class="stat-label">Running Time</div>
                             <div class="stat-value" id="live-runtime">0s</div>
                         </div>
                     </div>
@@ -966,7 +974,7 @@
         
         <!-- ===== PROFILES TAB ===== -->
         <div id="profiles" class="tab-content">
-            <button onclick="loadProfiles()" style="margin-bottom: 20px;">🔄 Refresh Profiles</button>
+            <button onclick="loadProfiles()" style="margin-bottom: 20px;">Refresh Profiles</button>
             <div id="profiles-list" class="profiles-list">
                 <p style="color: #888;">Loading profiles...</p>
             </div>
@@ -1290,6 +1298,8 @@
             document.getElementById('calibration-timer').textContent = `${Math.floor(calibrationTimer)}s`;
             document.getElementById('cal-avg-amp').textContent = avgAmp.toFixed(1);
             document.getElementById('cal-peak-freq').textContent = Math.round(dominantFreq);
+            document.getElementById('cal-current-amp').textContent = amplitude.toFixed(2);
+            document.getElementById('cal-current-freq').textContent = dominantFreq.toFixed(2) + ' Hz';
             document.getElementById('cal-time-remain').textContent = Math.max(0, CALIBRATION_DURATION - Math.floor(calibrationTimer)) + 's';
             
             // Update progress bars
@@ -1630,14 +1640,8 @@
                                 </div>
                                 <div class="profile-detail">
                                     <span>Vibration Activity:</span>
-                                    <strong style="color: ${(100 - p.vibration_data.vibration_percent) > 50 ? '#22c55e' : '#888'};">
-                                        ${(100 - p.vibration_data.vibration_percent).toFixed(1)}% active
-                                    </strong>
-                                </div>
-                                <div class="profile-detail">
-                                    <span>Status:</span>
-                                    <strong style="color: ${(100 - p.vibration_data.vibration_percent) > 50 ? '#22c55e' : '#888'};">
-                                        ${(100 - p.vibration_data.vibration_percent) > 50 ? '✓ Machine Vibrates' : '✗ No Vibration'}
+                                    <strong style="color: #22c55e;">
+                                        ${p.vibration_data.vibration_percent.toFixed(1)}% active
                                     </strong>
                                 </div>
                             ` : `

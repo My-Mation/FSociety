@@ -12,8 +12,8 @@
         }
         
         body {
-            background: #0f172a;
-            color: #e5e7eb;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
+            color: #e0e0e0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             padding: 20px;
             min-height: 100vh;
@@ -27,26 +27,27 @@
         h1 {
             text-align: center;
             margin-bottom: 10px;
-            color: #e5e7eb;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 800;
         }
         
         .subtitle {
             text-align: center;
-            color: #64748b;
+            color: #666;
             margin-bottom: 30px;
-            font-size: 15px;
-            letter-spacing: 0.2px;
+            font-size: 14px;
         }
         
         .back-link {
             display: inline-block;
             margin-bottom: 20px;
-            color: #2563eb;
+            color: #3b82f6;
             text-decoration: none;
             font-size: 14px;
-            font-weight: 500;
         }
         
         .back-link:hover {
@@ -67,23 +68,23 @@
         }
         
         .panel {
-            background: #020617;
-            border-radius: 8px;
-            border: 1px solid #1e293b;
+            background: linear-gradient(145deg, #1a2332, #1f2937);
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
             overflow: hidden;
         }
         
         .panel-header {
-            background: #1e293b;
+            background: linear-gradient(90deg, #1e293b, #334155);
             padding: 15px 20px;
-            border-bottom: 1px solid #334155;
+            border-bottom: 1px solid #333;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
         .panel-header h3 {
-            color: #2563eb;
+            color: #a78bfa;
             font-size: 16px;
             font-weight: 600;
         }
@@ -96,13 +97,13 @@
         }
         
         .badge.input {
-            background: #1e293b;
-            color: #2563eb;
+            background: #3b82f620;
+            color: #93c5fd;
         }
         
         .badge.output {
-            background: #1e293b;
-            color: #22d3ee;
+            background: #8b5cf620;
+            color: #c4b5fd;
         }
         
         .panel-body {
@@ -117,11 +118,10 @@
             line-height: 1.5;
             white-space: pre-wrap;
             word-break: break-word;
-            color: #e5e7eb;
-            background: #1e293b;
+            color: #d4d4d4;
+            background: #0a0e14;
             padding: 15px;
             border-radius: 8px;
-            border: 1px solid #334155;
         }
         
         .json-display .key { color: #9cdcfe; }
@@ -129,9 +129,9 @@
         .json-display .number { color: #b5cea8; }
         
         .action-panel {
-            background: #020617;
-            border-radius: 8px;
-            border: 1px solid #1e293b;
+            background: linear-gradient(145deg, #1a2332, #1f2937);
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
             padding: 20px;
             text-align: center;
             margin-bottom: 20px;
@@ -149,15 +149,15 @@
         }
         
         .btn-gemini {
-            background: #2563eb;
-            color: #fff;
-            box-shadow: none;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
         }
         
         .btn-gemini:hover {
-            background: #1d4ed8;
-            transform: none;
-            box-shadow: none;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
         }
         
         .btn-gemini:disabled {
@@ -190,21 +190,21 @@
         }
         
         .status-message.success {
-            background: #022c22;
+            background: #16653420;
             color: #86efac;
-            border: 1px solid #14532d;
+            border: 1px solid #166534;
         }
         
         .status-message.error {
-            background: #2a0f0f;
-            color: #fecaca;
+            background: #7f1d1d20;
+            color: #fca5a5;
             border: 1px solid #7f1d1d;
         }
         
         .status-message.warning {
-            background: #2e2405;
-            color: #fde68a;
-            border: 1px solid #854d0e;
+            background: #ca8a0420;
+            color: #fcd34d;
+            border: 1px solid #ca8a04;
         }
         
         .loading-spinner {
@@ -254,7 +254,7 @@
         }
         
         .finding-interpretation {
-            color: #94a3b8;
+            color: #a0a0a0;
             font-size: 13px;
         }
         
@@ -264,28 +264,26 @@
         }
         
         .confidence-low { color: #f59e0b; }
-        .confidence-medium { color: #2563eb; }
-        .confidence-high { color: #16a34a; }
+        .confidence-medium { color: #3b82f6; }
+        .confidence-high { color: #22c55e; }
         
         .actions-list {
             margin-top: 15px;
-            padding-left: 0;
         }
         
         .action-item {
-            background: #1e293b;
+            background: #0f1419;
             border-radius: 6px;
             padding: 10px 15px;
             margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 10px;
-            border: 1px solid #334155;
         }
         
         .action-item::before {
             content: "▸";
-            color: #2563eb;
+            color: #8b5cf6;
         }
         
         .severity-badge {
@@ -295,24 +293,21 @@
             font-weight: bold;
             font-size: 14px;
             margin-top: 10px;
-            background: #1e293b;
-            color: #e5e7eb;
-            border: 1px solid #334155;
         }
         
         .severity-low {
-            background: #022c22;
-            color: #16a34a;
+            background: #16653440;
+            color: #86efac;
         }
         
         .severity-medium {
-            background: #2e2405;
-            color: #ca8a04;
+            background: #ca8a0440;
+            color: #fcd34d;
         }
         
         .severity-high {
-            background: #2a0f0f;
-            color: #dc2626;
+            background: #7f1d1d40;
+            color: #fca5a5;
         }
         
         .session-info {
@@ -331,9 +326,9 @@
         }
         
         .response-panel {
-            background: #020617;
-            border-radius: 8px;
-            border: 1.5px solid #1e293b;
+            background: linear-gradient(145deg, #1a2332, #1f2937);
+            border-radius: 12px;
+            border: 2px solid #8b5cf6;
             overflow: hidden;
             display: none;
         }
@@ -362,15 +357,14 @@
         .health-status-display {
             text-align: center;
             padding: 20px;
-            background: #1e293b;
-            border-radius: 8px;
+            background: #0f1419;
+            border-radius: 12px;
             margin-bottom: 20px;
-            border: 1px solid #334155;
         }
         
         .health-status-display .label {
             font-size: 12px;
-            color: #64748b;
+            color: #666;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
@@ -379,20 +373,19 @@
             font-size: 36px;
             font-weight: 800;
             margin-top: 5px;
-            color: #e5e7eb;
         }
         
         .notes-section {
-            background: #1e293b;
+            background: #0f1419;
             border-radius: 8px;
             padding: 15px;
             margin-top: 15px;
-            border-left: 3px solid #2563eb;
+            border-left: 3px solid #666;
         }
         
         .notes-section .label {
             font-size: 11px;
-            color: #64748b;
+            color: #666;
             text-transform: uppercase;
             margin-bottom: 5px;
         }
@@ -405,8 +398,8 @@
         <p class="subtitle">Session-based analysis using audio, vibration, and gas sensors</p>
         
         <div class="session-info" id="session-info">
-            <span>Session: <strong id="session-time-display">Loading...</strong></span>
-            <span>Duration: <strong id="session-duration-display">--</strong></span>
+            <span>📅 Session: <strong id="session-time-display">Loading...</strong></span>
+            <span>⏱️ Duration: <strong id="session-duration-display">--</strong></span>
         </div>
         
         <!-- Debug: Database Status -->
@@ -419,7 +412,7 @@
         <div class="action-panel" id="load-panel">
             <h3 style="color: #a78bfa; margin-bottom: 15px;">Step 1: Load Session Data from Database</h3>
             <button class="btn btn-gemini" onclick="useLatestData(event)" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                Use Latest Data Range
+                📍 Use Latest Data Range
             </button>
         </div>
         
@@ -427,7 +420,7 @@
         <div class="action-panel" id="analyze-panel" style="display: none;">
             <h3 style="color: #a78bfa; margin-bottom: 15px;">Step 2: Send to Gemini AI for Analysis</h3>
             <button class="btn btn-gemini" id="analyze-btn" onclick="analyzeWithGemini()">
-                Analyze Session with Gemini AI
+                🚀 Analyze Session with Gemini AI
             </button>
             <button class="btn btn-secondary" onclick="window.location.href='/'">
                 Cancel
@@ -439,7 +432,7 @@
             <!-- Input Data Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Session Data from Database</h3>
+                    <h3>📊 Session Data from Database</h3>
                     <span class="badge input">RAW DATA</span>
                 </div>
                 <div class="panel-body">
@@ -450,7 +443,7 @@
             <!-- Data Summary Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Data Summary</h3>
+                    <h3>📈 Data Summary</h3>
                     <span class="badge input">OVERVIEW</span>
                 </div>
                 <div class="panel-body" id="data-summary">

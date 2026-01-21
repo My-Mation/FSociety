@@ -34,19 +34,17 @@
         
         .subtitle {
             text-align: center;
-            color: #64748b;
+            color: #666;
             margin-bottom: 30px;
-            font-size: 15px;
-            letter-spacing: 0.2px;
+            font-size: 14px;
         }
         
         .back-link {
             display: inline-block;
             margin-bottom: 20px;
-            color: #2563eb;
+            color: #3b82f6;
             text-decoration: none;
             font-size: 14px;
-            font-weight: 500;
         }
         
         .back-link:hover {
@@ -117,11 +115,10 @@
             line-height: 1.5;
             white-space: pre-wrap;
             word-break: break-word;
-            color: #e5e7eb;
-            background: #1e293b;
+            color: #d4d4d4;
+            background: #0a0e14;
             padding: 15px;
             border-radius: 8px;
-            border: 1px solid #334155;
         }
         
         .json-display .key { color: #9cdcfe; }
@@ -254,7 +251,7 @@
         }
         
         .finding-interpretation {
-            color: #94a3b8;
+            color: #a0a0a0;
             font-size: 13px;
         }
         
@@ -264,28 +261,26 @@
         }
         
         .confidence-low { color: #f59e0b; }
-        .confidence-medium { color: #2563eb; }
-        .confidence-high { color: #16a34a; }
+        .confidence-medium { color: #3b82f6; }
+        .confidence-high { color: #22c55e; }
         
         .actions-list {
             margin-top: 15px;
-            padding-left: 0;
         }
         
         .action-item {
-            background: #1e293b;
+            background: #0f1419;
             border-radius: 6px;
             padding: 10px 15px;
             margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 10px;
-            border: 1px solid #334155;
         }
         
         .action-item::before {
             content: "▸";
-            color: #2563eb;
+            color: #8b5cf6;
         }
         
         .severity-badge {
@@ -405,8 +400,8 @@
         <p class="subtitle">Session-based analysis using audio, vibration, and gas sensors</p>
         
         <div class="session-info" id="session-info">
-            <span>Session: <strong id="session-time-display">Loading...</strong></span>
-            <span>Duration: <strong id="session-duration-display">--</strong></span>
+            <span>📅 Session: <strong id="session-time-display">Loading...</strong></span>
+            <span>⏱️ Duration: <strong id="session-duration-display">--</strong></span>
         </div>
         
         <!-- Debug: Database Status -->
@@ -439,7 +434,7 @@
             <!-- Input Data Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Session Data from Database</h3>
+                    <h3>📊 Session Data from Database</h3>
                     <span class="badge input">RAW DATA</span>
                 </div>
                 <div class="panel-body">
@@ -450,7 +445,7 @@
             <!-- Data Summary Panel -->
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Data Summary</h3>
+                    <h3>📈 Data Summary</h3>
                     <span class="badge input">OVERVIEW</span>
                 </div>
                 <div class="panel-body" id="data-summary">
