@@ -553,6 +553,10 @@
         .detected-machine-card.detected {
             background: #0f1f0f;
         }
+        .detected-machine-card.likely {
+            border: 1px dashed #3b82f6;
+            background: #0a1220;
+        }
         .detected-machine-card .machine-name {
             font-size: 24px;
             font-weight: 700;
@@ -2080,6 +2084,31 @@
             return selectedPeaks;
         }
 
+        function getClosestMachine(dominantFreq) {
+            let closest = null;
+            let smallestDistance = Infinity;
+
+            Object.values(machineProfiles).forEach(profile => {
+                const median = profile.median_freq;
+                const distance = Math.abs(dominantFreq - median);
+
+                if (distance < smallestDistance) {
+                    smallestDistance = distance;
+                    closest = profile.machine_id;
+                }
+            });
+
+            if (!closest) return null;
+
+            // Convert distance → pseudo confidence (heuristic)
+            const confidence = Math.max(0, 1 - (smallestDistance / 1000));
+
+            return {
+                machine: closest,
+                confidence: confidence.toFixed(2)
+            };
+        }
+
         function switchTab(event, tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -2259,18 +2288,34 @@
                 
                 const detected = data.running_machines_raw || [];
                 const stable = data.running_machines || [];
-                
+
+                const dominantFreq = frequencyHistory[frequencyHistory.length - 1] || 0;
+                const fallback = getClosestMachine(dominantFreq);
+
                 if (stable.length > 0) {
+                    // ✅ REAL CONFIRMED
                     nameEl.textContent = stable.map(m => m.replace('_', ' ').toUpperCase()).join(', ');
                     confEl.textContent = 'Stable detection';
                     card.className = 'detected-machine-card detected';
+
                 } else if (detected.length > 0) {
+                    // 🟡 REAL BUT UNSTABLE
                     nameEl.textContent = detected.map(m => m.replace('_', ' ').toUpperCase()).join(', ');
-                    confEl.textContent = 'Detecting...';
+                    confEl.textContent = 'Detecting…';
                     card.className = 'detected-machine-card';
+
+                } else if (fallback) {
+                    // 🟣 DUMMY / CLOSEST MATCH
+                    nameEl.textContent =
+                        fallback.machine.replace('_', ' ').toUpperCase() + ' (Likely)';
+                    confEl.textContent =
+                        `Approximate match · confidence ${fallback.confidence}`;
+                    card.className = 'detected-machine-card likely';
+
                 } else {
+                    // ❌ NOTHING AT ALL
                     nameEl.textContent = 'No machine detected';
-                    confEl.textContent = 'Listening...';
+                    confEl.textContent = 'Listening…';
                     card.className = 'detected-machine-card no-detection';
                 }
                 

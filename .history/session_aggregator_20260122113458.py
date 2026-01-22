@@ -560,9 +560,9 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
     Raises:
         ValueError: If no data exists in the selected time range
     """
-    try:
-        cursor = conn.cursor()
+    cursor = conn.cursor()
 
+    try:
         # =====================
         # 0. VALIDATE TIME RANGE (Hard Guard)
         # =====================
@@ -642,37 +642,9 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
         }
         
         return payload
-
-    except Exception as e:
-        print(f"[WARN] aggregate_session_data failed, returning dummy data: {str(e)}")
-        # Return dummy data on any error
-        try:
-            duration_sec = 60.0  # Default fallback
-            return {
-                "machine_id": machine_id or "unknown",
-                "device_id": device_id or "unknown",
-                "session": {
-                    "start": start_ts,
-                    "stop": stop_ts,
-                    "duration_sec": duration_sec
-                },
-                "sound_summary": {
-                    "data_mode": "none",
-                    "dominant_freq_median": 0,
-                    "freq_iqr": [0, 0],
-                    "out_of_profile_events": 0
-                },
-                "vibration_summary": {"avg": 0, "peak": 0, "event_count": 0},
-                "gas_summary": {"avg_raw": 0, "peak_raw": 0, "status": "LOW"}
-            }
-        except Exception as fallback_e:
-            print(f"[ERROR] Failed to create fallback payload: {fallback_e}")
-            raise e  # Re-raise original error if fallback fails
+        
     finally:
-        try:
-            cursor.close()
-        except:
-            pass  # Ignore cursor close errors
+        cursor.close()
 
 
 def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, conn):

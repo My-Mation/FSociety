@@ -1395,7 +1395,13 @@ def get_session_preview():
     stop_ts = request.args.get('stop')
     machine_id = request.args.get('machine_id')
     device_id = request.args.get('device_id')
-    
+
+    # URL decode the timestamps if needed
+    if start_ts:
+        start_ts = start_ts.replace('%3A', ':')
+    if stop_ts:
+        stop_ts = stop_ts.replace('%3A', ':')
+
     if not start_ts or not stop_ts:
         return jsonify({"error": "start and stop timestamps are required"}), 400
     

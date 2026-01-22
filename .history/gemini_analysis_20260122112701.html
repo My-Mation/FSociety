@@ -819,13 +819,6 @@ SESSION SUMMARY:
                 showStatus('No session data loaded', 'error');
                 return;
             }
-
-            // Prevent analysis of dummy data
-            const dataMode = sessionData.sound_summary?.data_mode || 'unknown';
-            if (dataMode === 'none') {
-                showStatus('Cannot analyze dummy/placeholder data. Please load real data first.', 'error');
-                return;
-            }
             
             const btn = document.getElementById('analyze-btn');
             btn.disabled = true;

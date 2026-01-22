@@ -560,9 +560,9 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
     Raises:
         ValueError: If no data exists in the selected time range
     """
+    cursor = conn.cursor()
+    
     try:
-        cursor = conn.cursor()
-
         # =====================
         # 0. VALIDATE TIME RANGE (Hard Guard)
         # =====================
@@ -579,29 +579,15 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
         esp32_count = cursor.fetchone()[0]
         
         if audio_count == 0 and esp32_count == 0:
-            # Return fallback payload instead of error
-            try:
-                duration_sec = 60.0  # Default fallback
-                return {
-                    "machine_id": machine_id or "unknown",
-                    "device_id": device_id or "unknown",
-                    "session": {
-                        "start": start_ts,
-                        "stop": stop_ts,
-                        "duration_sec": duration_sec
-                    },
-                    "sound_summary": {
-                        "data_mode": "none",
-                        "dominant_freq_median": 0,
-                        "freq_iqr": [0, 0],
-                        "out_of_profile_events": 0
-                    },
-                    "vibration_summary": {"avg": 0, "peak": 0, "event_count": 0},
-                    "gas_summary": {"avg_raw": 0, "peak_raw": 0, "status": "LOW"}
-                }
-            except Exception as e:
-                print(f"[ERROR] Failed to create fallback payload: {e}")
-                raise
+            # Get actual data range to help user
+            cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM raw_audio")
+            actual_range = cursor.fetchone()
+            min_ts = str(actual_range[0]) if actual_range and actual_range[0] else "No data"
+            max_ts = str(actual_range[1]) if actual_range and actual_range[1] else "No data"
+            raise ValueError(
+                f"No data exists in selected time range ({start_ts} to {stop_ts}). "
+                f"Actual data range: {min_ts} to {max_ts}"
+            )
         
         # Parse timestamps for duration calculation
         start_dt = datetime.fromisoformat(start_ts.replace('Z', '+00:00').replace('+00:00', ''))
@@ -642,37 +628,9 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
         }
         
         return payload
-
-    except Exception as e:
-        print(f"[WARN] aggregate_session_data failed, returning dummy data: {str(e)}")
-        # Return dummy data on any error
-        try:
-            duration_sec = 60.0  # Default fallback
-            return {
-                "machine_id": machine_id or "unknown",
-                "device_id": device_id or "unknown",
-                "session": {
-                    "start": start_ts,
-                    "stop": stop_ts,
-                    "duration_sec": duration_sec
-                },
-                "sound_summary": {
-                    "data_mode": "none",
-                    "dominant_freq_median": 0,
-                    "freq_iqr": [0, 0],
-                    "out_of_profile_events": 0
-                },
-                "vibration_summary": {"avg": 0, "peak": 0, "event_count": 0},
-                "gas_summary": {"avg_raw": 0, "peak_raw": 0, "status": "LOW"}
-            }
-        except Exception as fallback_e:
-            print(f"[ERROR] Failed to create fallback payload: {fallback_e}")
-            raise e  # Re-raise original error if fallback fails
+        
     finally:
-        try:
-            cursor.close()
-        except:
-            pass  # Ignore cursor close errors
+        cursor.close()
 
 
 def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, conn):
@@ -742,16 +700,24 @@ def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, c
     frequencies.sort()
     n = len(frequencies)
 
-    # Compute median
-    median = (
-        frequencies[n // 2]
-        if n % 2
-        else (frequencies[n // 2 - 1] + frequencies[n // 2]) / 2
-    )
+    # Compute median (safe for any n >= 1)
+    if n == 0:
+        median = 0
+    elif n == 1:
+        median = frequencies[0]
+    else:
+        median = (
+            frequencies[n // 2]
+            if n % 2
+            else (frequencies[n // 2 - 1] + frequencies[n // 2]) / 2
+        )
 
-    # Compute IQR (25th and 75th percentiles)
-    q1 = frequencies[int(0.25 * (n - 1))]
-    q3 = frequencies[int(0.75 * (n - 1))]
+    # Compute IQR (25th and 75th percentiles) - safe for small n
+    if n < 2:
+        q1, q3 = median, median
+    else:
+        q1 = frequencies[int(0.25 * (n - 1))]
+        q3 = frequencies[int(0.75 * (n - 1))]
 
     # Only compare against profiles in LIVE mode (calibration IS the profile)
     out_of_profile = (
