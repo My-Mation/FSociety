@@ -7,6 +7,15 @@ def create_app():
     app = Flask(__name__)
     app.config['DEBUG'] = True
     app.config['PROPAGATE_EXCEPTIONS'] = True
+    
+    # Session Config
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key')
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_PERMANENT'] = False
+    
+    from flask_session import Session
+    Session(app)
+    
     CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
     
     app.wsgi_app = ProxyFix(

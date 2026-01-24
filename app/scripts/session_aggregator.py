@@ -440,13 +440,14 @@ def call_gemini_api(session_data: dict) -> dict:
     return result["analysis"]
 
 
-def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
+def get_latest_data_range(conn, user_id: int, duration_seconds: int = 60) -> dict:
     """
     Get the latest data time range from the database.
     Returns start/stop timestamps based on the most recent audio data.
     
     Args:
         conn: PostgreSQL connection object
+        user_id: The ID of the authenticated user
         duration_seconds: How many seconds of data to include (default 60)
     
     Returns:
@@ -454,6 +455,8 @@ def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
     """
     cursor = conn.cursor()
     try:
+        print(f"[DEBUG] get_latest_data_range CHECK user_id={user_id} duration={duration_seconds}")
+        
         # Get latest audio timestamp
         cursor.execute("""
             SELECT 
@@ -461,8 +464,10 @@ def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
                 MAX(timestamp) AS stop_ts,
                 COUNT(*) AS total_rows
             FROM raw_audio
-        """ % duration_seconds)
+            WHERE user_id = %%s
+        """ % duration_seconds, (user_id,))
         row = cursor.fetchone()
+        print(f"[DEBUG] get_latest_data_range ROW: {row}")
         
         if not row or not row[1]:
             return {
@@ -480,15 +485,15 @@ def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
         # Count audio rows in this range
         cursor.execute("""
             SELECT COUNT(*) FROM raw_audio 
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         audio_count = cursor.fetchone()[0]
         
         # Count ESP32 rows in this range
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data 
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         return {
@@ -504,7 +509,7 @@ def get_latest_data_range(conn, duration_seconds: int = 60) -> dict:
         cursor.close()
 
 
-def validate_time_range(conn, start_ts: str, stop_ts: str) -> dict:
+def validate_time_range(conn, user_id: int, start_ts: str, stop_ts: str) -> dict:
     """
     Validate that the requested time range has data.
     Returns validation result with counts.
@@ -514,19 +519,19 @@ def validate_time_range(conn, start_ts: str, stop_ts: str) -> dict:
         # Count audio rows
         cursor.execute("""
             SELECT COUNT(*) FROM raw_audio 
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         audio_count = cursor.fetchone()[0]
         
         # Count ESP32 rows
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data 
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         # Get actual data boundaries
-        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM raw_audio")
+        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM raw_audio WHERE user_id = %s", (user_id,))
         audio_range = cursor.fetchone()
         
         return {
@@ -543,12 +548,13 @@ def validate_time_range(conn, start_ts: str, stop_ts: str) -> dict:
         cursor.close()
 
 
-def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = None, device_id: str = None):
+def aggregate_session_data(conn, user_id: int, start_ts: str, stop_ts: str, machine_id: str = None, device_id: str = None):
     """
     Fetch and aggregate data from raw_audio and esp32_data between start and stop timestamps.
     
     Args:
         conn: PostgreSQL connection object
+        user_id: The ID of the authenticated user
         start_ts: ISO timestamp string (e.g., "2026-01-10T10:00:00")
         stop_ts: ISO timestamp string (e.g., "2026-01-10T10:30:00")
         machine_id: Optional filter for raw_audio
@@ -568,14 +574,14 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
         # =====================
         cursor.execute("""
             SELECT COUNT(*) FROM raw_audio
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         audio_count = cursor.fetchone()[0]
         
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data
-            WHERE timestamp BETWEEN %s AND %s
-        """, (start_ts, stop_ts))
+            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
+        """, (user_id, start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         if audio_count == 0 and esp32_count == 0:
@@ -611,13 +617,13 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
         # =====================
         # 1. AGGREGATE RAW_AUDIO (Sound Data)
         # =====================
-        sound_summary = aggregate_sound_data(cursor, start_ts, stop_ts, machine_id, conn)
+        sound_summary = aggregate_sound_data(cursor, user_id, start_ts, stop_ts, machine_id, conn)
         
         # =====================
         # 2. AGGREGATE ESP32_DATA (Vibration + Gas)
         # =====================
         vibration_summary, gas_summary, resolved_device_id = aggregate_esp32_data(
-            cursor, start_ts, stop_ts, device_id
+            cursor, user_id, start_ts, stop_ts, device_id
         )
         
         # =====================
@@ -675,7 +681,7 @@ def aggregate_session_data(conn, start_ts: str, stop_ts: str, machine_id: str = 
             pass  # Ignore cursor close errors
 
 
-def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, conn):
+def aggregate_sound_data(cursor, user_id: int, start_ts: str, stop_ts: str, machine_id: str, conn):
     """
     Aggregate sound data from raw_audio table.
     Computes median frequency, IQR, and out-of-profile event count.
@@ -689,12 +695,13 @@ def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, c
         q = """
             SELECT dominant_freq, freq_confidence, machine_id
             FROM raw_audio
-            WHERE timestamp BETWEEN %s AND %s
+            WHERE user_id = %s
+              AND timestamp BETWEEN %s AND %s
               AND dominant_freq IS NOT NULL
               AND dominant_freq > 0
               AND mode = %s
         """
-        params = [start_ts, stop_ts, mode]
+        params = [user_id, start_ts, stop_ts, mode]
         if machine_id:
             q += " AND machine_id = %s"
             params.append(machine_id)
@@ -755,7 +762,7 @@ def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, c
 
     # Only compare against profiles in LIVE mode (calibration IS the profile)
     out_of_profile = (
-        count_out_of_profile_events(conn, frequencies, detected_machine_id)
+        count_out_of_profile_events(conn, user_id, frequencies, detected_machine_id)
         if data_mode == "live" and detected_machine_id
         else 0
     )
@@ -769,15 +776,15 @@ def aggregate_sound_data(cursor, start_ts: str, stop_ts: str, machine_id: str, c
     }
 
 
-def count_out_of_profile_events(conn, frequencies: list, machine_id: str) -> int:
+def count_out_of_profile_events(conn, user_id: int, frequencies: list, machine_id: str) -> int:
     """
     Count how many frequency readings fall outside the machine's calibrated IQR range.
     """
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT iqr_low, iqr_high FROM machine_profiles WHERE machine_id = %s",
-            (machine_id,)
+            "SELECT iqr_low, iqr_high FROM machine_profiles WHERE machine_id = %s AND user_id = %s",
+            (machine_id, user_id)
         )
         row = cursor.fetchone()
         
@@ -792,72 +799,47 @@ def count_out_of_profile_events(conn, frequencies: list, machine_id: str) -> int
         cursor.close()
 
 
-def aggregate_esp32_data(cursor, start_ts: str, stop_ts: str, device_id: str = None):
+def aggregate_esp32_data(cursor, user_id: int, start_ts: str, stop_ts: str, device_id: str = None):
     """
-    Aggregate ESP32 sensor data (vibration + gas).
-    Returns vibration_summary, gas_summary, and resolved device_id.
+    Aggregate ESP32 sensor data (vibration + gas) for a user.
     """
     # Build query with optional device_id filter
-    query = """
-        SELECT vibration, event_count, gas_raw, gas_status, device_id
+    q = """
+        SELECT vibration, gas_raw, device_id, gas_status
         FROM esp32_data
-        WHERE timestamp >= %s AND timestamp <= %s
+        WHERE user_id = %s
+          AND timestamp BETWEEN %s AND %s
     """
-    params = [start_ts, stop_ts]
-    
+    params = [user_id, start_ts, stop_ts]
     if device_id:
-        query += " AND device_id = %s"
+        q += " AND device_id = %s"
         params.append(device_id)
-    
-    query += " ORDER BY timestamp"
-    
-    cursor.execute(query, params)
+        
+    cursor.execute(q, params)
     rows = cursor.fetchall()
     
     if not rows:
         return (
             {"avg": 0, "peak": 0, "event_count": 0},
-            {"avg_raw": 0, "peak_raw": 0, "status": "LOW"},
+            {"avg_raw": 0, "peak_raw": 0, "status": "NO_DATA"},
             device_id
         )
+        
+    # Detect device_id if missing
+    resolved_device_id = device_id or max(
+        (r[2] for r in rows if r[2]), default=None
+    )
     
-    # Extract values
-    vibrations = []
-    event_counts = []
-    gas_raws = []
-    gas_statuses = []
-    resolved_device_id = device_id
-    
-    for row in rows:
-        vib, evt, gas, status, dev_id = row
+    # Process Vibration
+    vibrations = [r[0] for r in rows if r[0] is not None]
+    if vibrations:
+        vib_avg = sum(vibrations) / len(vibrations)
+        vib_peak = max(vibrations)
+        vib_events = sum(1 for v in vibrations if v > 0) # Assumes >0 is event
+    else:
+        vib_avg, vib_peak, vib_events = 0, 0, 0
         
-        if vib is not None:
-            # Reverse vibration logic: 0 = active, 1 = inactive
-            # Convert to activity percentage (0 -> 100%, 1 -> 0%)
-            activity = (1 - vib) * 100 if vib <= 1 else 0
-            vibrations.append(activity)
-        
-        if evt is not None:
-            event_counts.append(evt)
-        
-        if gas is not None and gas > 0:
-            gas_raws.append(gas)
-        
-        if status:
-            gas_statuses.append(status)
-        
-        if not resolved_device_id and dev_id:
-            resolved_device_id = dev_id
-    
-    # Vibration summary
-    vib_avg = sum(vibrations) / len(vibrations) if vibrations else 0
-    vib_peak = max(vibrations) if vibrations else 0
-    total_events = sum(event_counts) if event_counts else 0
-    
     vibration_summary = {
-        "avg": round(vib_avg, 1),
-        "peak": round(vib_peak, 1),
-        "event_count": total_events
     }
     
     # Gas summary

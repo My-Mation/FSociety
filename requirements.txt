@@ -2,4 +2,10 @@ Flask
 flask-cors
 psycopg2-binary
 requests
+psycopg2-binary
+requests
 python-dotenv
+google-auth
+google-auth-oauthlib
+flask-session
+cachelib

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 import queue
 import traceback
 from datetime import datetime
@@ -7,10 +7,12 @@ from app.db import get_db
 from app.services.batch_processor import BATCH_QUEUE, persist_failed_batch
 from app.services.audio_processing import AMPLITUDE_THRESHOLD, noise_model, identify_machines
 from app.services.stability import update_detection_history, get_stable_machines
+from app.auth import login_required
 
 ingest_bp = Blueprint('ingest', __name__)
 
 @ingest_bp.route("/ingest_batch", methods=["POST"])
+@login_required
 def ingest_batch():
     """Accept large batch payloads and enqueue for background processing.
     Returns 202 Accepted immediately so upstream proxies (nginx) won't timeout.
@@ -23,6 +25,9 @@ def ingest_batch():
 
     if not payload or 'frames' not in payload:
         return jsonify({"error": "frames required"}), 400
+
+    # Inject user_id from session for the worker
+    payload['user_id'] = session['user_id']
 
     try:
         BATCH_QUEUE.put_nowait(payload)
@@ -37,9 +42,11 @@ def ingest_batch():
 
 
 @ingest_bp.route("/ingest", methods=["POST"])
+@login_required
 def ingest():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     
     try:
         data = request.get_json(force=True)
@@ -75,8 +82,8 @@ def ingest():
                 cursor.execute(
                     """
                     INSERT INTO raw_audio
-                    (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         ts,
@@ -85,7 +92,8 @@ def ingest():
                         freq_confidence,
                         psycopg2.extras.Json(peaks),
                         machine_id,
-                        mode
+                        mode,
+                        user_id
                     )
                 )
                 inserted_count += 1
@@ -134,8 +142,8 @@ def ingest():
                 cursor.execute(
                     """
                     INSERT INTO raw_audio
-                    (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode, user_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         ts,
@@ -144,22 +152,24 @@ def ingest():
                         freq_confidence,
                         psycopg2.extras.Json(peaks),
                         None,
-                        mode
+                        mode,
+                        user_id
                     )
                 )
                 inserted_count += 1
 
                 if len(peaks) > 0:
-                    result = identify_machines(peaks)
+                    result = identify_machines(user_id, peaks)
                     running_machines.update(result["detected"])
                     anomaly_machines.update(result["anomaly"])
 
             conn.commit()
 
-            cursor.execute("SELECT machine_id FROM machine_profiles")
+            cursor.execute("SELECT machine_id FROM machine_profiles WHERE user_id = %s", (user_id,))
             all_machines = [row[0] for row in cursor.fetchall()]
-            update_detection_history(running_machines, all_machines)
-            stable_machines = get_stable_machines(all_machines)
+            
+            update_detection_history(user_id, running_machines, all_machines)
+            stable_machines = get_stable_machines(user_id, all_machines)
 
             print(f"\n[OK] LIVE BATCH: {len(frames)} frames, {inserted_count} inserted")
             print(f"   Detected (raw): {sorted(running_machines)}")
@@ -189,10 +199,12 @@ def ingest():
 
 # ESP32 Routes defined in same file for logical grouping
 @ingest_bp.route("/ingest_esp32", methods=["POST"])
+@login_required
 def ingest_esp32():
     """Dedicated endpoint for ESP32 sensor data"""
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     
     try:
         data = request.get_json(force=True)
@@ -208,10 +220,10 @@ def ingest_esp32():
         cursor.execute(
             """
             INSERT INTO esp32_data
-            (device_id, timestamp, vibration, event_count, gas_raw, gas_status)
-            VALUES (%s, NOW(), %s, %s, %s, %s)
+            (device_id, timestamp, vibration, event_count, gas_raw, gas_status, user_id)
+            VALUES (%s, NOW(), %s, %s, %s, %s, %s)
             """,
-            (device_id, vibration, event_count, gas_raw, gas_status)
+            (device_id, vibration, event_count, gas_raw, gas_status, user_id)
         )
         conn.commit()
         print(f"[OK] ESP32 STORED: device={device_id}, vibration={vibration}")
@@ -227,17 +239,21 @@ def ingest_esp32():
 
 
 @ingest_bp.route("/latest_esp32", methods=["GET"])
+@login_required
 def latest_esp32():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     try:
         cursor.execute(
             """
             SELECT device_id, vibration, event_count, gas_raw, gas_status, timestamp
             FROM esp32_data
+            WHERE user_id = %s
             ORDER BY timestamp DESC
             LIMIT 1
-            """
+            """,
+            (user_id,)
         )
         row = cursor.fetchone()
         if row:
@@ -264,17 +280,19 @@ def latest_esp32():
         cursor.close()
 
 @ingest_bp.route("/esp32_data", methods=["GET"])
+@login_required
 def get_esp32_data():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     try:
         limit = request.args.get("limit", default=100, type=int)
         device_id = request.args.get("device_id", default=None, type=str)
         
         if device_id:
-            cursor.execute("SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status FROM esp32_data WHERE device_id = %s ORDER BY timestamp DESC LIMIT %s", (device_id, limit))
+            cursor.execute("SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status FROM esp32_data WHERE device_id = %s AND user_id = %s ORDER BY timestamp DESC LIMIT %s", (device_id, user_id, limit))
         else:
-            cursor.execute("SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status FROM esp32_data ORDER BY timestamp DESC LIMIT %s", (limit,))
+            cursor.execute("SELECT id, device_id, timestamp, vibration, event_count, gas_raw, gas_status FROM esp32_data WHERE user_id = %s ORDER BY timestamp DESC LIMIT %s", (user_id, limit,))
         
         rows = cursor.fetchall()
         data = [{"id": r[0], "device_id": r[1], "timestamp": str(r[2]), "vibration": r[3], "event_count": r[4], "gas_raw": r[5], "gas_status": r[6]} for r in rows]

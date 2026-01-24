@@ -43,6 +43,11 @@ def batch_worker():
         try:
             # Reuse ingest logic but in worker context (create fresh cursor)
             mode = batch.get('mode', 'live')
+            user_id = batch.get('user_id') # REQUIRED
+
+            if not user_id:
+                print('[WARN] Skipping batch missing user_id')
+                continue
 
             if mode == 'calibration':
                 frames = batch.get('frames', [])
@@ -69,8 +74,8 @@ def batch_worker():
                     cursor.execute(
                         """
                         INSERT INTO raw_audio
-                        (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode, user_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             datetime.fromtimestamp(timestamp / 1000),
@@ -79,7 +84,8 @@ def batch_worker():
                             freq_confidence,
                             psycopg2.extras.Json(peaks),
                             machine_id,
-                            mode
+                            mode,
+                            user_id
                         )
                     )
                     inserted_count += 1
@@ -115,8 +121,8 @@ def batch_worker():
                     cursor.execute(
                         """
                         INSERT INTO raw_audio
-                        (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        (timestamp, amplitude, dominant_freq, freq_confidence, peaks, machine_id, mode, user_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             datetime.fromtimestamp(timestamp / 1000),
@@ -125,24 +131,27 @@ def batch_worker():
                             freq_confidence,
                             psycopg2.extras.Json(peaks),
                             None,
-                            mode
+                            mode,
+                            user_id
                         )
                     )
                     inserted_count += 1
 
-                    machines_in_frame = identify_machines(peaks)
+                    # TODO: Update identify_machines to take user_id
+                    machines_in_frame = identify_machines(user_id, peaks)
                     running_machines.update(machines_in_frame["detected"]) 
 
                 conn.commit()
 
-                # Update temporal stability (fetch all machine ids)
-                cursor.execute("SELECT machine_id FROM machine_profiles")
+                # Update temporal stability (fetch all machine ids for THIS user)
+                cursor.execute("SELECT machine_id FROM machine_profiles WHERE user_id = %s", (user_id,))
                 all_machines = [row[0] for row in cursor.fetchall()]
-                update_detection_history(running_machines, all_machines)
-                stable_machines = get_stable_machines(all_machines)
+                
+                update_detection_history(user_id, running_machines, all_machines)
+                stable_machines = get_stable_machines(user_id, all_machines)
 
                 cursor.close()
-                print(f"\n[OK] (worker) LIVE BATCH: {len(frames)} frames, {inserted_count} inserted (captured={frames_captured})")
+                print(f"\n[OK] (worker) LIVE BATCH: user={user_id}, {len(frames)} frames, {inserted_count} inserted")
                 print(f"   Detected (raw): {sorted(running_machines)}")
                 print(f"   Stable machines: {sorted(stable_machines)}")
 

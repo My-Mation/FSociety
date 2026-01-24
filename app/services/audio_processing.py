@@ -52,12 +52,13 @@ MIN_PEAK_AMP = 0.15
 # Minimum number of frequency bands that must match for detection
 MIN_BAND_MATCHES = 2
 
-def identify_machines(peaks_list):
+def identify_machines(user_id, peaks_list):
     """
-    Match detected peaks to machine profiles using multi-band matching.
+    Match detected peaks to machine profiles for a SPECIFIC USER.
     A machine is detected ONLY if ≥2 frequency bands match in the same frame.
     
     Args:
+        user_id: The ID of the authenticated user
         peaks_list: List of {freq, amp} for a single frame (should be top 3-5 peaks)
     
     Returns:
@@ -73,7 +74,8 @@ def identify_machines(peaks_list):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT machine_id, freq_bands, iqr_low, iqr_high FROM machine_profiles ORDER BY machine_id"
+            "SELECT machine_id, freq_bands, iqr_low, iqr_high FROM machine_profiles WHERE user_id = %s ORDER BY machine_id",
+            (user_id,)
         )
         profiles = cursor.fetchall()
         if not profiles:

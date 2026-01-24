@@ -1,8 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 import psycopg2.extras
 import traceback
 from app.db import get_db
 from app.services.stability import get_stable_machines, detection_history
+from app.services.sensor_processing import process_vibration_data, process_gas_data
+from app.auth import login_required
 
 profiles_bp = Blueprint('profiles', __name__)
 
@@ -10,9 +12,11 @@ FREQ_BIN_SIZE = 15
 MIN_CLUSTER_SAMPLES = 15
 
 @profiles_bp.route("/save_profile", methods=["POST"])
+@login_required
 def save_profile():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
 
     try:
         data = request.get_json(force=True)
@@ -20,55 +24,22 @@ def save_profile():
         vibration_samples = data.get("vibration_samples", [])
         gas_samples = data.get("gas_samples", [])
         
-        print(f"[DEBUG] save_profile received: machine_id={machine_id}")
+        print(f"[DEBUG] save_profile received: machine_id={machine_id} user={user_id}")
 
         if not machine_id:
             return jsonify({"error": "machine_id required"}), 400
 
-        # Process vibration data
-        vibration_data = None
-        if vibration_samples and len(vibration_samples) > 0:
-            vibration_count = sum(1 for v in vibration_samples if v == 0)
-            total_samples = len(vibration_samples)
-            vibration_percent = (1 - (vibration_count / total_samples)) * 100 if total_samples > 0 else 0
-            avg_raw = sum(vibration_samples) / total_samples if total_samples > 0 else 0
-            vibration_data = {
-                "samples": total_samples,
-                "vibration_detected_count": vibration_count,
-                "vibration_percent": round(vibration_percent, 1),
-                "avg_raw_value": round(avg_raw, 3),
-                "has_vibration": vibration_percent < 50
-            }
+        # Process vibration data via service
+        vibration_data = process_vibration_data(vibration_samples)
         
-        # Process gas data
-        gas_data = None
-        if gas_samples and len(gas_samples) > 0:
-            raw_values = [g.get("raw", 0) if isinstance(g, dict) else g for g in gas_samples]
-            valid_raw_values = [v for v in raw_values if v > 0]
-            
-            if valid_raw_values:
-                avg_gas = sum(valid_raw_values) / len(valid_raw_values)
-                max_gas = max(valid_raw_values)
-                min_gas = min(valid_raw_values)
-            else:
-                avg_gas = 0; max_gas = 0; min_gas = 0
-            
-            if avg_gas == 0: gas_status = "NO_DATA"
-            elif avg_gas < 800: gas_status = "SAFE"
-            elif avg_gas < 2000: gas_status = "MODERATE"
-            else: gas_status = "HAZARDOUS"
-            
-            gas_data = {
-                "samples": len(gas_samples),
-                "valid_samples": len(valid_raw_values),
-                "avg_raw": round(avg_gas, 1),
-                "max_raw": round(max_gas, 1),
-                "min_raw": round(min_gas, 1),
-                "status": gas_status
-            }
+        # Process gas data via service
+        gas_data = process_gas_data(gas_samples)
 
-        # Fetch calibration data
-        cursor.execute("SELECT peaks FROM raw_audio WHERE machine_id = %s AND mode = 'calibration' ORDER BY timestamp DESC LIMIT 3000", (machine_id,))
+        # Fetch calibration data for THIS user
+        cursor.execute(
+            "SELECT peaks FROM raw_audio WHERE user_id = %s AND machine_id = %s AND mode = 'calibration' ORDER BY timestamp DESC LIMIT 3000", 
+            (user_id, machine_id)
+        )
         rows = cursor.fetchall()
 
         if not rows:
@@ -120,9 +91,9 @@ def save_profile():
         cursor.execute(
             """
             INSERT INTO machine_profiles
-                (machine_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-            ON CONFLICT (machine_id)
+                (machine_id, user_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            ON CONFLICT (user_id, machine_id)
             DO UPDATE SET
                 median_freq = EXCLUDED.median_freq,
                 iqr_low = EXCLUDED.iqr_low,
@@ -132,7 +103,7 @@ def save_profile():
                 gas_data = EXCLUDED.gas_data,
                 updated_at = NOW()
             """,
-            (machine_id, median_freq, iqr_low, iqr_high, psycopg2.extras.Json(freq_bands),
+            (machine_id, user_id, median_freq, iqr_low, iqr_high, psycopg2.extras.Json(freq_bands),
              psycopg2.extras.Json(vibration_data) if vibration_data else None,
              psycopg2.extras.Json(gas_data) if gas_data else None)
         )
@@ -157,11 +128,13 @@ def save_profile():
         cursor.close()
 
 @profiles_bp.route("/profiles", methods=["GET"])
+@login_required
 def get_profiles():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     try:
-        cursor.execute("SELECT machine_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at FROM machine_profiles ORDER BY machine_id")
+        cursor.execute("SELECT machine_id, median_freq, iqr_low, iqr_high, freq_bands, vibration_data, gas_data, created_at FROM machine_profiles WHERE user_id = %s ORDER BY machine_id", (user_id,))
         rows = cursor.fetchall()
         profiles = []
         for row in rows:
@@ -195,15 +168,17 @@ def get_profiles():
         cursor.close()
 
 @profiles_bp.route("/delete_profile", methods=["POST"])
+@login_required
 def delete_profile():
     conn = get_db()
     cursor = conn.cursor()
+    user_id = session['user_id']
     try:
         data = request.get_json(force=True)
         machine_id = data.get("machine_id")
         if not machine_id: return jsonify({"error": "machine_id required"}), 400
         
-        cursor.execute("DELETE FROM machine_profiles WHERE machine_id = %s", (machine_id,))
+        cursor.execute("DELETE FROM machine_profiles WHERE machine_id = %s AND user_id = %s", (machine_id, user_id))
         deleted_count = cursor.rowcount
         conn.commit()
         
@@ -219,18 +194,23 @@ def delete_profile():
         cursor.close()
 
 @profiles_bp.route("/live_status", methods=["GET"])
+@login_required
 def live_status():
     conn = get_db()
+    user_id = session['user_id']
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT machine_id FROM machine_profiles")
+        cursor.execute("SELECT machine_id FROM machine_profiles WHERE user_id = %s", (user_id,))
         all_machines = [row[0] for row in cursor.fetchall()]
         cursor.close()
         
-        stable = get_stable_machines(all_machines)
+        stable = get_stable_machines(user_id, all_machines)
+        
+        # Get raw detection history from stability service direct look-up
         detected = []
+        user_history = detection_history.get(user_id, {})
         for machine_id in all_machines:
-            if machine_id in detection_history and detection_history[machine_id] and detection_history[machine_id][-1] == 1:
+            if machine_id in user_history and user_history[machine_id] and user_history[machine_id][-1] == 1:
                 detected.append(machine_id)
         
         return jsonify({"detected": sorted(detected), "stable": sorted(stable)})
