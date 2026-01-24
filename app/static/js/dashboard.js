@@ -88,7 +88,7 @@ function initializeCanvases() {
     if (calibSpectrum) {
         calibrationSpectrumCtx = calibSpectrum.getContext('2d');
         calibSpectrum.width = calibSpectrum.offsetWidth || 800;
-        calibSpectrum.height = 150;
+        calibSpectrum.height = calibSpectrum.offsetHeight || 150;
     }
 
     const calibHistory = document.getElementById('calibration-history'); // Kept for safety if ID exists, but we moved to new charts
@@ -764,7 +764,7 @@ async function startListeningForMachine(machineId) {
     document.getElementById('cal-mode-badge').className = 'mode-badge listening';
     document.getElementById('cal-active-machine').textContent = machineId.replace('_', ' ').toUpperCase();
     document.getElementById('calibration-control-panel').style.display = 'block';
-    document.getElementById('calibration-waveform-container').style.display = 'block';
+    document.getElementById('calibration-waveform-container').style.display = 'flex';
     document.getElementById('calibration-save').disabled = true;
 
     // Highlight active button

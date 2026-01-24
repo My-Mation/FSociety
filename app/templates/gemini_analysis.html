@@ -7,179 +7,151 @@
     <title>Gemini AI Analysis - Machine Diagnostics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Slab:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v=7.1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/analysis.css') }}?v=7.1">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gemini.css') }}">
 </head>
 
 <body>
+    <!-- 1️⃣ REPORT HEADER -->
+    <header class="report-header">
+        <div class="header-top">
+            <a href="/" class="back-btn">BACK TO DASHBOARD</a>
+            <div class="header-title-group">
+                <h1>Machine Diagnostics Report</h1>
+                <p class="subtitle">Session-based analysis using audio, vibration, and gas sensors</p>
+            </div>
+            <div class="header-actions">
+                <!-- Placeholder for future actions -->
+            </div>
+        </div>
+        <div class="session-meta-strip" id="session-info">
+            <div class="meta-item">
+                <span class="meta-label">Session:</span>
+                <strong class="meta-value" id="session-time-display">Waiting for data...</strong>
+            </div>
+            <div class="meta-divider"></div>
+            <div class="meta-item">
+                <span class="meta-label">Duration:</span>
+                <strong class="meta-value" id="session-duration-display">--</strong>
+            </div>
+        </div>
+    </header>
+
     <div class="report-container">
-        <!-- 1. Report Header -->
-        <header class="report-header">
-            <div class="header-main">
-                <a href="/" class="btn btn-secondary back-btn">← Back to Dashboard</a>
-                <div class="header-content">
-                    <h1>Machine Diagnostics Report</h1>
-                    <p class="subtitle">Session-based analysis using audio, vibration, and gas sensors</p>
-                </div>
-                <div class="session-meta-group" id="session-info">
-                    <div class="meta-item">
-                        <span class="label">Session Start</span>
-                        <strong class="value" id="session-start-display">--:--:--</strong>
-                    </div>
-                    <div class="meta-item">
-                        <span class="label">Duration</span>
-                        <strong class="value" id="session-duration-display">--s</strong>
-                    </div>
-                </div>
-            </div>
-        </header>
 
-        <!-- 2. Database Status Strip -->
-        <div class="status-strip" id="db-status">
-            <div class="status-item loading">Initializing database connection...</div>
+        <!-- 2️⃣ DATABASE STATUS STRIP -->
+        <div class="status-strip" id="db-status-container">
+            <div class="status-strip-label">Database Status</div>
+            <div id="db-status" class="status-strip-content">Checking database...</div>
         </div>
 
-        <!-- 3. Workflow Steps -->
-        <div class="workflow-steps">
-            <!-- Step 1 -->
+        <!-- 3️⃣ WORKFLOW STEPS -->
+        <div class="workflow-grid">
+            <!-- Step 1 Card -->
             <div class="step-card" id="load-panel">
-                <div class="step-number">01</div>
-                <div class="step-content">
-                    <h3>Load Session Data</h3>
-                    <p>Retrieve the latest sensor telemetry from the local database.</p>
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <h3>Load Data</h3>
                 </div>
+                <p class="step-desc">Fetch the latest aggregated session data from the database.</p>
                 <div class="step-action">
-                    <button class="btn btn-primary btn-lg" onclick="useLatestData(event)">
-                        Load Latest Data
+                    <button class="btn btn-primary btn-block" onclick="useLatestData(event)">
+                        LOAD LATEST SESSION
                     </button>
-                    <div class="step-status" id="load-status-text"></div>
+                    <!-- Status message area inside step card for context -->
+                    <div id="input-json" class="step-status"></div>
                 </div>
             </div>
 
-            <!-- Step 2 -->
-            <div class="step-card disabled" id="analyze-panel">
-                <div class="step-number">02</div>
-                <div class="step-content">
-                    <h3>AI Diagnosis</h3>
-                    <p>Send aggregated session telemetry to Gemini 1.5 Flash for analysis.</p>
+            <!-- Step 2 Card -->
+            <div class="step-card disabled" id="analyze-panel-card">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <h3>Run Analysis</h3>
                 </div>
-                <div class="step-action">
-                    <button class="btn btn-gemini btn-lg" id="analyze-btn" onclick="analyzeWithGemini()" disabled>
-                        Analyze with Gemini AI
+                <p class="step-desc">Send session metrics to AI for diagnostics.</p>
+                <div class="step-action" id="analyze-actions" style="display: none; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-gemini btn-block" id="analyze-btn" onclick="analyzeWithGemini()">
+                        ANALYZE NOW
                     </button>
+                    <div id="status-message" class="step-status" style="display: none;"></div>
+                </div>
+                <!-- Placeholder when disabled -->
+                <div class="step-action-placeholder" id="analyze-placeholder"
+                    style="display: block; color: #666; font-size: 13px; font-style: italic;">
+                    Complete Step 1 to enable analysis.
                 </div>
             </div>
         </div>
 
-        <!-- 4. Data Summary Dashboard (Grid) -->
-        <div class="dashboard-grid" id="data-dashboard" style="display: none;">
-            <!-- Injected by JS: Overview, Sound, Vibration -->
-            <div class="dashboard-loading">Loading data visualization...</div>
-        </div>
-
-        <!-- Hidden Prompt Panel (for debug/transparency) -->
-        <div class="panel collapsed" id="prompt-panel" style="display: none; margin-top: 20px;">
-            <div class="panel-header" onclick="togglePrompt()">
-                <h3>📝 System Prompt & Data Payload</h3>
-                <span class="badge">DEBUG</span>
-            </div>
-            <div class="panel-body" style="display: none;">
-                <div class="json-display" id="prompt-display"></div>
+        <!-- 4️⃣ DATA SUMMARY GRID -->
+        <div class="section-title">Session Data Overview</div>
+        <div class="data-grid" id="data-summary">
+            <div class="empty-state-card">
+                Data summary will appear here after loading session.
             </div>
         </div>
 
-        <!-- 5. Response Panel -->
-        <div class="response-section" id="response-panel" style="display: none;">
-            <div class="response-header-strip">
-                <h3>🔍 Diagnostic Results</h3>
-                <button class="btn btn-sm btn-secondary" onclick="copyResponse()">Copy JSON</button>
+        <!-- RESULT SECTION -->
+        <div class="response-section" id="response-panel">
+            <div class="response-header-card">
+                <div class="response-title">
+                    <h2>Diagnostic Results</h2>
+                    <div class="ai-badge">AI Analysis</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="copyResponse()">COPY REPORT</button>
             </div>
 
-            <div class="health-overview-card">
-                <div class="health-indicator">
-                    <span class="label">Machine Health Status</span>
-                    <h2 id="health-status-value">--</h2>
+            <div class="results-grid">
+                <!-- Health Status Card -->
+                <div class="result-card health-card">
+                    <div class="card-label">Machine Health</div>
+                    <div class="health-display">
+                        <div class="value" id="health-status-value">--</div>
+                        <div class="severity-badge" id="severity-badge">--</div>
+                    </div>
                 </div>
-                <div class="severity-indicator">
-                    <span class="label">Severity Assessment</span>
-                    <span class="severity-badge" id="severity-badge">--</span>
-                </div>
-            </div>
 
-            <div class="findings-grid">
-                <div class="findings-col">
-                    <h4>Key Findings</h4>
-                    <div id="findings-list" class="findings-list"></div>
+                <!-- Recommended Actions Card -->
+                <div class="result-card actions-card">
+                    <div class="card-label">Recommended Actions</div>
+                    <div class="actions-list" id="actions-list">
+                        <div class="text-muted">Analysis pending...</div>
+                    </div>
                 </div>
-                <div class="actions-col">
-                    <h4>Recommended Actions</h4>
-                    <div id="actions-list" class="actions-list"></div>
+
+                <!-- Key Findings Card (Full Width) -->
+                <div class="result-card findings-card">
+                    <div class="card-label">Key Findings & Anomalies</div>
+                    <div class="findings-list" id="findings-list">
+                        <div class="text-muted">Analysis pending...</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="notes-box" id="notes-section" style="display: none;">
-                <h4>Additional Notes</h4>
-                <p id="notes-content"></p>
-            </div>
+                <!-- Notes Card -->
+                <div class="result-card notes-card" id="notes-section" style="display: none;">
+                    <div class="card-label">Additional Notes</div>
+                    <div id="notes-content"></div>
+                </div>
 
-            <!-- Raw Response Toggle -->
-            <div style="margin-top: 20px; text-align: center;">
-                <button class="btn btn-sm btn-text"
-                    onclick="document.getElementById('raw-response-container').style.display = 'block'">View Raw API
-                    Response</button>
-            </div>
-            <div id="raw-response-container" style="display: none; margin-top: 10px;">
-                <div class="json-display" id="raw-response"></div>
+                <!-- Raw JSON (Collapsed) -->
+                <div class="result-card raw-card">
+                    <details>
+                        <summary>View Raw JSON Response</summary>
+                        <div class="json-display" id="raw-response" style="margin-top: 10px;"></div>
+                    </details>
+                </div>
             </div>
         </div>
 
     </div>
 
-    <!-- SCRIPTS -->
+    <!-- JAVASCRIPT LOGIC PRESERVED & UI UPDATED -->
     <script>
         let sessionData = null;
         let geminiResponse = null;
 
-        const SYSTEM_PROMPT = `You are an industrial machine diagnostics assistant.
-You will be given a SINGLE machine session summary as structured JSON.
-This data was generated by deterministic signal-processing code and
-represents aggregated sensor behavior over a fixed time window.
-
-IMPORTANT RULES:
-- Do NOT assume missing data.
-- Do NOT invent sensors or values.
-- Base all conclusions strictly on the provided JSON.
-- If evidence is weak, say so explicitly.
-
-TASK:
-Analyze the session summary and return your response in STRICT JSON
-using EXACTLY the following schema:
-
-{
-  "health_status": "NORMAL | WARNING | CRITICAL",
-  "key_findings": [
-    {
-      "signal": "sound | vibration | gas | combined",
-      "observation": "short factual observation",
-      "interpretation": "likely technical meaning",
-      "confidence": "LOW | MEDIUM | HIGH"
-    }
-  ],
-  "overall_severity": "LOW | MEDIUM | HIGH",
-  "recommended_actions": [
-    "action item 1",
-    "action item 2"
-  ],
-  "notes": "optional clarifications or uncertainty"
-}
-
-SESSION SUMMARY:
-`;
-
-        // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const startTs = urlParams.get('start');
         const stopTs = urlParams.get('stop');
@@ -189,229 +161,261 @@ SESSION SUMMARY:
             checkDatabaseStatus();
 
             if (startTs && stopTs) {
-                // Update Time Display
-                document.getElementById('session-start-display').textContent = formatTime(startTs);
+                document.getElementById('session-time-display').textContent =
+                    `${formatTime(startTs)} - ${formatTime(stopTs)}`;
 
                 if (autoload) {
                     loadSessionData();
                 }
+            } else {
+                // Initial state message
+                document.getElementById('input-json').innerHTML = '<span class="status-text">Ready to load data.</span>';
             }
         });
 
-        // ---------------------------------------------------------
-        // 1. DATABASE STATUS STRIP
-        // ---------------------------------------------------------
+        let dbInfo = null;
+
         async function checkDatabaseStatus() {
-            const statusEl = document.getElementById('db-status');
             try {
                 const res = await fetch('/debug-db');
-                const dbInfo = await res.json();
+                dbInfo = await res.json();
 
+                const statusEl = document.getElementById('db-status');
+                // New Horizontal Status Strip Layout
                 statusEl.innerHTML = `
-                    <div class="status-item">
-                        <span class="status-label">RAW AUDIO</span>
-                        <span class="status-value">${dbInfo.raw_audio_count}</span>
-                        <span class="status-indicator ok"></span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">ESP32 DATA</span>
-                        <span class="status-value">${dbInfo.esp32_data_count}</span>
-                        <span class="status-indicator ok"></span>
-                    </div>
-                    <div class="status-item">
-                         <span class="status-label">RANGE</span>
-                         <span class="status-value narrow">${dbInfo.raw_audio_earliest ? formatTimeShort(dbInfo.raw_audio_earliest) : 'N/A'} - ${dbInfo.raw_audio_latest ? formatTimeShort(dbInfo.raw_audio_latest) : 'N/A'}</span>
-                    </div>
+                    <div class="status-pill"><span class="label">Raw Audio:</span> <span class="val">${dbInfo.raw_audio_count}</span></div>
+                    <div class="status-pill"><span class="label">ESP32 Data:</span> <span class="val">${dbInfo.esp32_data_count}</span></div>
+                    <div class="status-pill"><span class="label">Range:</span> <span class="val dimmed">${dbInfo.raw_audio_latest || 'N/A'}</span></div>
                 `;
             } catch (err) {
-                statusEl.innerHTML = '<div class="status-item error">Database connection failed</div>';
+                document.getElementById('db-status').textContent = 'Could not check database status';
             }
         }
 
-        // ---------------------------------------------------------
-        // 2. LOAD DATA LOGIC
-        // ---------------------------------------------------------
         async function useLatestData(event) {
-            let btn = event.target;
+            let btn = event && event.target ? event.target : document.querySelector('button[onclick*="useLatestData"]');
             try {
-                btn.disabled = true;
-                btn.innerHTML = 'Querying...';
-
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'FINDING DATA...';
+                }
                 const res = await fetch('/latest-data-range?duration=60');
                 const data = await res.json();
-
                 if (!data.has_data) {
-                    alert('No data found.');
-                    btn.disabled = false;
-                    btn.innerHTML = 'Load Latest Data';
+                    alert('No audio data found in database: ' + (data.message || 'Unknown error'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'LOAD LATEST SESSION';
+                    }
                     return;
                 }
-
                 window.location.href = `/gemini-analysis?start=${encodeURIComponent(data.start)}&stop=${encodeURIComponent(data.stop)}&autoload=true`;
             } catch (err) {
-                alert('Error: ' + err.message);
-                btn.disabled = false;
-                btn.innerHTML = 'Load Latest Data';
+                alert('Error fetching latest data range: ' + err.message);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'LOAD LATEST SESSION';
+                }
             }
+        }
+
+        function formatISOLocal(date) {
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
         }
 
         async function loadSessionData() {
-            // Update UI State
-            document.getElementById('load-status-text').innerHTML = '<span class="spinner"></span> Fetching...';
+            const latestBtn = document.querySelector('button[onclick*="useLatestData"]'); // Relaxed selector
+            if (latestBtn) {
+                latestBtn.disabled = true;
+                latestBtn.innerHTML = 'LOADING...';
+            }
+
+            // Using input-json div for status now
+            const statusDiv = document.getElementById('input-json');
+            statusDiv.innerHTML = '<div class="status-message loading">Querying database...</div>';
 
             try {
+                const validateRes = await fetch(`/validate-time-range?start=${encodeURIComponent(startTs)}&stop=${encodeURIComponent(stopTs)}`);
+                const validation = await validateRes.json();
+
+                if (!validation.valid) {
+                    throw new Error(
+                        `No data in selected time range!\nAvailable: ${validation.audio_earliest} to ${validation.audio_latest}`
+                    );
+                }
+
                 const params = new URLSearchParams({ start: startTs, stop: stopTs });
                 const res = await fetch(`/session-preview?${params.toString()}`);
                 sessionData = await res.json();
 
-                if (sessionData.error) throw new Error(sessionData.error);
+                if (sessionData.error) {
+                    throw new Error(sessionData.error);
+                }
 
-                // Update Duration
-                document.getElementById('session-duration-display').textContent = `${sessionData.session.duration_sec}s`;
+                document.getElementById('session-duration-display').textContent =
+                    `${sessionData.session.duration_sec}s`;
 
-                // Render Dashboard Cards
+                // Success State for Step 1
+                statusDiv.innerHTML = '<div class="status-message success">DATA LOADED SUCCESSFULLY</div>';
+                if (latestBtn) latestBtn.innerHTML = 'DATA LOADED';
+
+                // Display new Data Grid
                 displayDataSummary(sessionData);
-                document.getElementById('data-dashboard').style.display = 'grid';
 
-                // Unlock Gemini Step
-                const step2 = document.getElementById('analyze-panel');
-                step2.classList.remove('disabled');
-                step2.classList.add('active');
-                document.getElementById('analyze-btn').disabled = false;
+                // Unlock Step 2
+                const dataMode = sessionData.sound_summary?.data_mode || 'unknown';
+                const analyzeCard = document.getElementById('analyze-panel-card');
+                const analyzeActions = document.getElementById('analyze-actions');
+                const analyzePlaceholder = document.getElementById('analyze-placeholder');
 
-                // Mark Step 1 Complete
-                document.getElementById('load-panel').classList.add('complete');
-                document.getElementById('load-status-text').innerHTML = '✅ Data Loaded';
+                analyzeCard.classList.remove('disabled');
+                analyzePlaceholder.style.display = 'none';
+                analyzeActions.style.display = 'flex';
 
-                // Update Prompt Debug
-                const promptContent = SYSTEM_PROMPT.replace('SESSION SUMMARY:\n', '') +
-                    `\n// SESSION DATA:\n` + JSON.stringify(sessionData, null, 2);
-                document.getElementById('prompt-display').innerHTML = syntaxHighlight(promptContent);
+                if (dataMode === 'none') {
+                    showStatus('Placeholder data loaded. Analysis may be generic.', 'warning');
+                }
 
             } catch (err) {
-                console.error(err);
-                document.getElementById('load-status-text').innerHTML = '❌ Error loading data';
+                console.warn('Load error:', err.message);
+                if (latestBtn) {
+                    latestBtn.disabled = false;
+                    latestBtn.innerHTML = 'LOAD LATEST SESSION';
+                }
+                statusDiv.innerHTML = `<div class="status-message error">${err.message}</div>`;
             }
         }
 
-        // ---------------------------------------------------------
-        // 3. DASHBOARD CARDS RENDERER (CRITICAL)
-        // ---------------------------------------------------------
+        // 4️⃣ DATA SUMMARY -> DASHBOARD CARDS
         function displayDataSummary(data) {
-            const container = document.getElementById('data-dashboard');
+            const summary = document.getElementById('data-summary');
 
-            const sound = data.sound_summary || {};
-            const vib = data.vibration_summary || {};
-            const gas = data.gas_summary || {};
+            const dataMode = data.sound_summary?.data_mode || 'unknown';
+            const soundFreq = data.sound_summary?.dominant_freq_median || 0;
+            const soundIQR = data.sound_summary?.freq_iqr || [0, 0];
+            const outOfProfile = data.sound_summary?.out_of_profile_events || 0;
 
-            const dataMode = sound.data_mode || 'unknown';
-            const modeClass = dataMode === 'live' ? 'status-live' : 'status-calib';
-            const modeLabel = dataMode === 'live' ? 'LIVE DATA' : 'CALIBRATION';
+            const vibAvg = data.vibration_summary?.avg || 0;
+            const vibPeak = data.vibration_summary?.peak || 0;
+            const vibEvents = data.vibration_summary?.event_count || 0;
 
-            container.innerHTML = `
-                <!-- 1. OVERVIEW CARD -->
-                <div class="dashboard-card overview-card">
+            const gasAvg = data.gas_summary?.avg_raw || 0;
+            const gasPeak = data.gas_summary?.peak_raw || 0;
+            const gasStatus = data.gas_summary?.status || 'UNKNOWN';
+
+            const modeLabel = dataMode === 'live' ? 'LIVE SESSION' : dataMode === 'calibration' ? 'CALIBRATION' : 'UNKNOWN';
+            const modeClass = dataMode === 'live' ? 'badge-live' : 'badge-calib';
+
+            summary.innerHTML = `
+                <!-- OVERVIEW CARD -->
+                <div class="data-card overview-card">
                     <div class="card-header">
                         <h4>Session Overview</h4>
-                        <span class="badge ${modeClass}">${modeLabel}</span>
                     </div>
                     <div class="card-body">
-                        <div class="metric-big">
-                            <div class="label">Mode</div>
-                            <div class="value">${dataMode.toUpperCase()}</div>
+                        <div class="kpi-group">
+                            <div class="kpi-label">Data Mode</div>
+                            <div class="status-badge ${modeClass}">${modeLabel}</div>
                         </div>
-                        <div class="metric-row">
-                             <span>Sensor Status</span>
-                             <span class="status-ok">Active</span>
-                        </div>
-                         <div class="metric-row">
-                             <span>Sample Integrity</span>
-                             <span class="status-ok">100%</span>
+                         <div class="kpi-group">
+                            <div class="kpi-label">Active Sensors</div>
+                            <div class="sensor-list">
+                                <span>AUDIO</span>
+                                <span>VIBRATION</span>
+                                <span>GAS</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. SOUND ANALYSIS CARD -->
-                <div class="dashboard-card">
+                <!-- SOUND ANALYSIS CARD -->
+                <div class="data-card">
                     <div class="card-header">
                         <h4>Sound Analysis</h4>
-                        <span class="icon">🔊</span>
                     </div>
                     <div class="card-body">
-                        <table class="metric-table">
-                            <thead>
-                                <tr>
-                                    <th>Metric</th>
-                                    <th>Value</th>
-                                    <th>Unit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Dominant Freq</td>
-                                    <td class="highlight">${(sound.dominant_freq_median || 0).toFixed(1)}</td>
-                                    <td>Hz</td>
-                                </tr>
-                                <tr>
-                                    <td>IQR Range</td>
-                                    <td>${(sound.freq_iqr?.[0] || 0).toFixed(0)} - ${(sound.freq_iqr?.[1] || 0).toFixed(0)}</td>
-                                    <td>Hz</td>
-                                </tr>
-                                <tr>
-                                    <td>Out-of-Profile</td>
-                                    <td class="${(sound.out_of_profile_events || 0) > 0 ? 'warn' : 'ok'}">${sound.out_of_profile_events || 0}</td>
-                                    <td>Count</td>
-                                </tr>
-                            </tbody>
+                        <table class="data-table">
+                            <tr>
+                                <td>Dominant Freq</td>
+                                <td class="text-right highlight">${soundFreq.toFixed(1)} <small>Hz</small></td>
+                            </tr>
+                            <tr>
+                                <td>IQR Range</td>
+                                <td class="text-right">${soundIQR[0].toFixed(1)} - ${soundIQR[1].toFixed(1)} <small>Hz</small></td>
+                            </tr>
+                            <tr>
+                                <td>Out-of-Profile</td>
+                                <td class="text-right ${outOfProfile > 10 ? 'text-danger' : 'text-success'}">${outOfProfile}</td>
+                            </tr>
                         </table>
                     </div>
                 </div>
 
-                <!-- 3. VIBRATION CARD -->
-                <div class="dashboard-card">
+                <!-- VIBRATION CARD -->
+                <div class="data-card">
                     <div class="card-header">
-                        <h4>Vibration</h4>
-                        <span class="icon">📳</span>
+                        <h4>Vibration Metrics</h4>
                     </div>
                     <div class="card-body">
-                        <table class="metric-table">
-                            <thead>
-                                <tr>
-                                    <th>Metric</th>
-                                    <th>Value</th>
-                                    <th>Unit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Average Act.</td>
-                                    <td>${(vib.avg || 0).toFixed(1)}</td>
-                                    <td>%</td>
-                                </tr>
-                                <tr>
-                                    <td>Peak Act.</td>
-                                    <td class="highlight">${(vib.peak || 0).toFixed(1)}</td>
-                                    <td>%</td>
-                                </tr>
-                                <tr>
-                                    <td>Events</td>
-                                    <td>${vib.event_count || 0}</td>
-                                    <td>Count</td>
-                                </tr>
-                            </tbody>
+                        <table class="data-table">
+                            <tr>
+                                <td>Avg Activity</td>
+                                <td class="text-right">${vibAvg.toFixed(1)}%</td>
+                            </tr>
+                            <tr>
+                                <td>Peak Activity</td>
+                                <td class="text-right">${vibPeak.toFixed(1)}%</td>
+                            </tr>
+                            <tr>
+                                <td>Events</td>
+                                <td class="text-right">${vibEvents}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- GAS CARD -->
+                <div class="data-card">
+                    <div class="card-header">
+                        <h4>Gas & Air Quality</h4>
+                    </div>
+                    <div class="card-body">
+                         <table class="data-table">
+                            <tr>
+                                <td>Status</td>
+                                <td class="text-right status-${gasStatus.toLowerCase()}">${gasStatus}</td>
+                            </tr>
+                            <tr>
+                                <td>Average</td>
+                                <td class="text-right">${gasAvg.toFixed(0)}</td>
+                            </tr>
+                            <tr>
+                                <td>Peak</td>
+                                <td class="text-right">${gasPeak.toFixed(0)}</td>
+                            </tr>
                         </table>
                     </div>
                 </div>
             `;
         }
 
-        // ---------------------------------------------------------
-        // 4. GEMINI ANALYSIS LOGIC
-        // ---------------------------------------------------------
         async function analyzeWithGemini() {
+            if (!sessionData) {
+                showStatus('No session data loaded', 'error');
+                return;
+            }
+            const dataMode = sessionData.sound_summary?.data_mode || 'unknown';
+            if (dataMode === 'none') {
+                showStatus('Cannot analyze placeholder data.', 'error');
+                return;
+            }
+
             const btn = document.getElementById('analyze-btn');
-            btn.innerHTML = 'Analyzing...';
             btn.disabled = true;
+            btn.innerHTML = 'PROCESSING...';
+
+            showStatus('Sending to AI...', 'loading');
 
             try {
                 const res = await fetch('/gemini-analyze', {
@@ -421,54 +425,77 @@ SESSION SUMMARY:
                 });
 
                 const result = await res.json();
-                if (!res.ok || result.error) throw new Error(result.error || 'Failed');
+                if (!res.ok || result.error) throw new Error(result.error || 'Analysis failed');
 
                 geminiResponse = result.analysis;
-                renderResponse(geminiResponse);
 
-                btn.innerHTML = 'Analysis Complete';
-                document.getElementById('analyze-panel').classList.add('complete');
+                if (result.ai_used) {
+                    displayGeminiResponse(geminiResponse, result.model);
+                    showStatus(`Analysis complete (${result.model})`, 'success');
+                } else {
+                    displayGeminiResponse(geminiResponse, null, result.reason);
+                    showStatus(`Rule-based fallback: ${result.reason}`, 'warning');
+                }
+                btn.innerHTML = 'ANALYZE AGAIN';
+                btn.disabled = false;
 
             } catch (err) {
-                alert(err.message);
+                showStatus('Error: ' + err.message, 'error');
                 btn.disabled = false;
-                btn.innerHTML = 'Retry Analysis';
+                btn.innerHTML = 'RETRY ANALYSIS';
             }
         }
 
-        function renderResponse(analysis) {
+        function displayGeminiResponse(analysis, modelUsed = null, fallbackReason = null) {
             const panel = document.getElementById('response-panel');
             panel.style.display = 'block';
-            panel.scrollIntoView({ behavior: 'smooth' });
 
-            // Health
+            // Use simple colors for health
             const healthEl = document.getElementById('health-status-value');
             healthEl.textContent = analysis.health_status || 'UNKNOWN';
-            healthEl.className = (analysis.health_status || '').toLowerCase();
+            // Reset classes
+            healthEl.className = 'value';
+            healthEl.classList.add((analysis.health_status || 'NORMAL').toLowerCase());
 
-            // Severity
             const severityEl = document.getElementById('severity-badge');
             severityEl.textContent = analysis.overall_severity || 'LOW';
-            severityEl.className = 'severity-badge ' + (analysis.overall_severity || 'LOW').toLowerCase();
+            // Reset classes
+            severityEl.className = 'severity-badge';
+            severityEl.classList.add((analysis.overall_severity || 'LOW').toLowerCase());
 
-            // Findings
+
+            // Key Findings
             const findingsList = document.getElementById('findings-list');
-            findingsList.innerHTML = (analysis.key_findings || []).map(f => `
-                <div class="finding-item">
-                    <div class="finding-header">
-                        <span class="signal-tag">${f.signal}</span>
-                        <span class="confidence-tag">${f.confidence} Confidence</span>
-                    </div>
-                    <div class="finding-text">${f.observation}</div>
-                    <div class="finding-sub">${f.interpretation}</div>
-                </div>
-            `).join('');
+            findingsList.innerHTML = '';
+            if (analysis.key_findings && analysis.key_findings.length > 0) {
+                analysis.key_findings.forEach(finding => {
+                    const row = document.createElement('div');
+                    row.className = 'finding-row';
+                    row.innerHTML = `
+                        <div class="f-sig">${finding.signal || 'System'}</div>
+                        <div class="f-content">
+                            <div class="f-obs">${finding.observation}</div>
+                            <div class="f-int">${finding.interpretation}</div>
+                        </div>
+                        <div class="f-conf">${finding.confidence}</div>
+                    `;
+                    findingsList.appendChild(row);
+                });
+            } else {
+                findingsList.innerHTML = '<div class="empty-msg">No findings reported.</div>';
+            }
 
             // Actions
             const actionsList = document.getElementById('actions-list');
-            actionsList.innerHTML = (analysis.recommended_actions || []).map(a => `
-                <div class="action-item">${a}</div>
-            `).join('');
+            actionsList.innerHTML = '';
+            if (analysis.recommended_actions && analysis.recommended_actions.length > 0) {
+                analysis.recommended_actions.forEach(action => {
+                    const item = document.createElement('div');
+                    item.className = 'action-check-item';
+                    item.innerHTML = `<span class="check"></span> ${action}`;
+                    actionsList.appendChild(item);
+                });
+            }
 
             // Notes
             if (analysis.notes) {
@@ -478,33 +505,45 @@ SESSION SUMMARY:
 
             // Raw
             document.getElementById('raw-response').innerHTML = syntaxHighlight(JSON.stringify(analysis, null, 2));
+
+            // Scroll
+            setTimeout(() => {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
 
-        // Helpers
-        function formatTime(iso) {
-            if (!iso) return '--';
-            return new Date(iso).toLocaleTimeString();
+        function showStatus(message, type) {
+            const el = document.getElementById('status-message');
+            if (el) {
+                el.style.display = 'block';
+                el.className = 'step-status ' + type;
+                el.textContent = message;
+            }
         }
-        function formatTimeShort(iso) {
-            if (!iso) return '-';
-            const d = new Date(iso);
-            return `${d.getHours()}:${d.getMinutes()}`;
+
+        function formatTime(isoString) {
+            if (!isoString) return '--';
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
-        function togglePrompt() {
-            const el = document.querySelector('#prompt-panel .panel-body');
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-        }
-        function copyResponse() {
-            navigator.clipboard.writeText(JSON.stringify(geminiResponse, null, 2));
-            alert('Copied!');
-        }
+
         function syntaxHighlight(json) {
             json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
-                let cls = 'number';
-                if (/^"/.test(match)) cls = /:$/.test(match) ? 'key' : 'string';
-                return `<span class="${cls}">${match}</span>`;
-            });
+            return json.replace(
+                /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+                function (match) {
+                    let cls = 'number';
+                    if (/^"/.test(match)) {
+                        cls = /:$/.test(match) ? 'key' : 'string';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                }
+            );
+        }
+
+        function copyResponse() {
+            if (!geminiResponse) return;
+            navigator.clipboard.writeText(JSON.stringify(geminiResponse, null, 2));
         }
     </script>
 </body>

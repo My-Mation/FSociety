@@ -78,6 +78,7 @@ def session_preview_page():
     return send_file(os.path.join(BASE_DIR, "templates", "session_preview.html"))
 
 @ui_bp.route("/gemini-analysis")
+@login_required
 def gemini_analysis_page():
     """Serve the Gemini analysis page"""
     return render_template("gemini_analysis.html")

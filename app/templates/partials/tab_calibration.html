@@ -179,12 +179,15 @@
     </div>
 
     <!-- WAVEFORM & GRAPHS CONTAINER -->
-    <div id="calibration-waveform-container" class="grid-24" style="display:none; margin-top: 20px;">
+    <!-- WAVEFORM & GRAPHS CONTAINER (Replicated from Live Detection Layout) -->
+    <div id="calibration-waveform-container" class="calibration-flex-container"
+        style="display:none; margin-top: 20px; width: 100%; box-sizing: border-box;">
 
         <!-- ROW A: WAVEFORM + AUDIO HISTORY -->
 
         <!-- Live Waveform (Col-12) -->
-        <div class="tile col-12" style="height: 300px; border-color: #444;">
+        <div class="tile"
+            style="height: 550px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
             <div class="tile-header">
                 <span class="tile-title" style="color: #3b82f6;">LIVE AUDIO WAVEFORM</span>
                 <span class="tile-title">OSCILLOSCOPE</span>
@@ -195,7 +198,8 @@
         </div>
 
         <!-- Audio History (Col-12) -->
-        <div class="tile col-12" style="height: 300px; border-color: #444;">
+        <div class="tile"
+            style="height: 550px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
             <div class="tile-header">
                 <span class="tile-title" style="color: #3b82f6;">AUDIO LEVEL HISTORY (SESSION)</span>
                 <span class="tile-title">AMPLITUDE vs TIME</span>
@@ -208,7 +212,8 @@
         <!-- ROW B: SPECTRUM + VIBRATION HISTORY -->
 
         <!-- Spectrum (Col-12) -->
-        <div class="tile col-12" style="height: 300px;">
+        <div class="tile"
+            style="height: 450px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
             <div class="tile-header">
                 <span class="tile-title">FREQUENCY SPECTRUM ANALYSIS</span>
                 <span class="tile-title">Real-time FFT</span>
@@ -219,7 +224,8 @@
         </div>
 
         <!-- Vibration History (Col-12) -->
-        <div class="tile col-12" style="height: 300px;">
+        <div class="tile"
+            style="height: 450px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
             <div class="tile-header">
                 <span class="tile-title">VIBRATION HISTORY (RMS)</span>
                 <span class="tile-title">ACCEL vs TIME</span>
@@ -229,7 +235,8 @@
             </div>
         </div>
 
-        <div id="calibration-placeholder" class="tile col-24" style="display:none; height: 100px; text-align: center;">
+        <div id="calibration-placeholder" class="tile"
+            style="width: 100%; display:none; height: 100px; text-align: center;">
             <div class="tile-content">
                 <p style="color: #666; font-size: 14px;">No audio samples captured yet. Start listening to see live
                     data.

@@ -1,8 +1,6 @@
 /* ==========================================
    BASE & GLOBAL STYLES
    ========================================== */
-
-/* 1. RESET & DEFAULTS */
 * {
     margin: 0;
     padding: 0;
@@ -11,154 +9,411 @@
 
 body {
     background: #0f0f0f;
-    /* Deep Dark Background */
     color: #e0e0e0;
-    /* Soft White Text */
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Roboto Serif', serif;
     font-weight: 400;
     margin: 0;
     min-height: 100vh;
-    line-height: 1.6;
 }
 
-/* 2. TYPOGRAPHY */
-h1,
-h2,
+/* Typography Overrides */
+.logo {
+    /* Logo text/image container styling */
+}
+
 h3,
-h4,
-h5,
-h6 {
-    color: #ffffff;
-    font-family: 'Roboto', sans-serif;
-    margin-bottom: 1rem;
-    font-weight: 500;
+h4 {
+    font-family: 'Roboto Serif', serif;
 }
 
-a {
-    color: #3b82f6;
-    text-decoration: none;
-    transition: color 0.2s ease;
+/* Layout */
+.header {
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-a:hover {
-    color: #60a5fa;
+.logo {
+    font-weight: 700;
+    font-size: 40px;
+    color: #e0e0e0;
 }
 
-/* 3. LAYOUT UTILITIES */
 .container {
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     padding: 20px;
 }
 
-.header {
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-    padding: 15px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 60px;
-}
-
-.logo {
-    font-family: 'Roboto Slab', serif;
-    font-weight: 700;
-    font-size: 24px;
-    color: #e0e0e0;
-    letter-spacing: 1px;
-}
-
-/* 4. BUTTONS (Global Defaults) */
-button {
-    font-family: 'Inter', sans-serif;
-}
-
-.btn {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    text-align: center;
-    transition: all 0.2s;
-}
-
-.logout-btn {
-    color: #888;
-    font-size: 14px;
-    padding: 6px 12px;
-    border: 1px solid #333;
-    border-radius: 4px;
-    background: #111;
-}
-
-.logout-btn:hover {
-    background: #222;
-    color: #fff;
-    border-color: #555;
-}
-
-/* 5. TABS (Used in Index) */
+/* Navigation Tabs */
 .tabs {
     display: flex;
-    gap: 2px;
-    margin-bottom: 20px;
-    background: #111;
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid #222;
+    gap: 0;
+    margin-bottom: 40px;
+    border-bottom: 1px solid #333;
 }
 
 .tab-btn {
-    flex: 1;
-    background: transparent;
+    padding: 12px 20px;
+    background: #1a1a1a;
     border: none;
-    color: #888;
-    padding: 12px;
-    font-size: 14px;
-    font-weight: 600;
+    color: #666;
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-radius: 2px;
-    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.2s ease;
 }
 
 .tab-btn:hover {
-    color: #bbb;
-    background: #1a1a1a;
+    color: #000;
 }
 
 .tab-btn.active {
-    background: #3b82f6;
+    color: #e0e0e0;
+    font-weight: 600;
+    background: #64748b;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Generic Components */
+button {
+    padding: 8px 16px;
+    background: #5a9bd5;
+    border: none;
+    color: #000;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    margin-right: 8px;
+}
+
+button:hover {
+    background: #4a8bc7;
+}
+
+button:disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+.stop-btn {
+    background: #dc2626;
+    color: white;
+}
+
+.stop-btn:hover {
+    background: #b91c1c;
+}
+
+.logout-btn {
+    padding: 8px 16px;
+    background: #dc2626;
     color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
 }
 
-/* 6. UTILITIES */
-.hidden {
-    display: none !important;
+.logout-btn:hover {
+    background: #b91c1c;
 }
 
-/* Status Colors (Global Palette) */
-.text-ok {
+/* Status Utilities */
+.status {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.status.info {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+.status-cell-green {
     color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
 }
 
-.text-warn {
-    color: #f59e0b;
+.status-cell-yellow {
+    color: #eab308;
+    background: rgba(234, 179, 8, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
 }
 
-.text-error {
+.status-cell-red {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Industrial Grid System (24-col) */
+.grid-24 {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.col-24 {
+    grid-column: span 24;
+}
+
+.col-18 {
+    grid-column: span 18;
+}
+
+.col-12 {
+    grid-column: span 12;
+}
+
+.col-8 {
+    grid-column: span 8;
+}
+
+.col-6 {
+    grid-column: span 6;
+}
+
+.col-4 {
+    grid-column: span 4;
+}
+
+.col-3 {
+    grid-column: span 3;
+}
+
+@media (max-width: 1200px) {
+    .col-lg-12 {
+        grid-column: span 12;
+    }
+
+    .col-lg-24 {
+        grid-column: span 24;
+    }
+}
+
+@media (max-width: 768px) {
+    .grid-24 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    [class*="col-"] {
+        grid-column: span 2;
+    }
+}
+
+/* Tables */
+.dense-table-container {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: #111;
+}
+
+.dense-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Roboto', sans-serif;
+    table-layout: fixed;
+}
+
+.dense-table th {
+    position: sticky;
+    top: 0;
+    background: #232323;
+    color: #aaa;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 2px solid #333;
+    z-index: 10;
+}
+
+.dense-table td {
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #ddd;
+    border-bottom: 1px solid #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dense-table tr:hover {
+    background: #1a1a1a;
+}
+
+/* Tiles / Cards */
+.tile {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    position: relative;
+    min-width: 0;
+    /* CRITICAL: Prevents grid blowout with Canvas/Charts */
+}
+
+.tile-header {
+    padding: 6px 10px;
+    background: #232323;
+    border-bottom: 1px solid #2a2a2a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 28px;
+}
+
+.tile-title {
+    .tile-title {
+        color: #888;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 1px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Roboto', sans-serif;
+    }
+
+    font-size: 10px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tile-content {
+    padding: 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.tile-content.no-pad {
+    padding: 0;
+}
+
+.tile-content canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* KPI Values */
+.kpi-value {
+    font-family: 'Roboto Serif', serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.kpi-value {
+    font-family: 'Roboto Serif', serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #e0e0e0;
+}
+
+.kpi-value.large {
+    font-size: 32px;
+}
+
+.kpi-value.small {
+    font-size: 18px;
+}
+
+.kpi-unit {
+    font-family: 'Roboto Serif', serif;
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.kpi-trend {
+    font-size: 10px;
+    margin-top: 4px;
+}
+
+.kpi-trend.up {
     color: #ef4444;
 }
 
-.bg-dark {
-    background-color: #1a1a1a;
+.kpi-trend.down {
+    color: #10b981;
 }
 
-.border-dark {
-    border: 1px solid #333;
+/* Monospace Elements (Logs, IDs) */
+.mono-font {
+    font-family: 'Roboto Mono', monospace;
+    letter-spacing: -0.5px;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Roboto Serif', serif;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Control Panel */
+.control-panel {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 6px;
+    margin-bottom: 30px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    /* Fixed: was missing unit in original maybe? no, just standard */
+    align-items: center;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #888;
+    font-size: 12px;
+}
+
+.info-value {
+    color: #5a9bd5;
+    font-weight: 600;
+    font-size: 18px;
 }

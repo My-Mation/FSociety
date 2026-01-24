@@ -1,60 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FSociety - Login</title>
+    <title>VISO | Machine Diagnostics Access</title>
+    <!-- Roboto Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --border-color: #333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --accent-color: #3b82f6;
+            /* VISO Blue */
+            --success-color: #22c55e;
+            --font-family: 'Roboto', sans-serif;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            /* Subtle grid texture */
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
         }
-        .login-container {
-            background-color: #1e1e1e;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            /* Industrial sharp corners */
+            padding: 40px 30px;
             text-align: center;
-            width: 300px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
         }
-        h1 { margin-bottom: 2rem; color: #bb86fc; }
-        .g_id_signin { margin-top: 1rem; }
+
+        /* Top accent line */
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent-color);
+        }
+
+        .logo-container {
+            margin-bottom: 25px;
+        }
+
+        .logo-img {
+            max-height: 80px;
+            /* Proportional scaling */
+            width: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .system-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 5px 0;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .system-subtitle {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .system-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 35px;
+            line-height: 1.5;
+        }
+
+        /* Auth Container */
+        .auth-container {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            /* Ensure GSI button is centered and handles width via attributes */
+        }
+
+        .security-text {
+            font-size: 11px;
+            color: #555;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .security-icon {
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Status Row */
+        .status-row {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #2a2a2a;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-label {
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+
+        .status-val {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .status-val.awaiting {
+            color: #eab308;
+        }
     </style>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
-    <div class="login-container">
-        <h1>FSociety</h1>
-        <p>Machine Sound Detection System</p>
-        
-        <div id="g_id_onload"
-             data-client_id="{{ google_client_id }}"
-             data-context="signin"
-             data-ux_mode="popup"
-             data-callback="handleCredentialResponse"
-             data-auto_prompt="false">
+
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <div class="logo-container">
+                <!-- Using the new logo asset -->
+                <img src="{{ url_for('static', filename='img/industrial_logo.jpg') }}" alt="VISO Logo" class="logo-img">
+            </div>
+
+            <h1 class="system-title">VISO SYSTEM ACCESS</h1>
+            <div class="system-subtitle">Industrial Diagnostics Engine</div>
+
+            <p class="system-desc">
+                Restricted access for authorized personnel only.<br>
+                Please verify identity to proceed to the control dashboard.
+            </p>
+
+            <!-- Google Identity Services Configuration -->
+            <div id="g_id_onload" data-client_id="{{ google_client_id }}" data-context="signin" data-ux_mode="popup"
+                data-callback="handleCredentialResponse" data-auto_prompt="false">
+            </div>
+
+            <!-- Login Button -->
+            <div class="auth-container">
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_black"
+                    data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="360">
+                    <!-- Forced width for 420px card -->
+                </div>
+            </div>
+
+            <div class="security-text">
+                <span class="security-icon"></span>
+                <span>Secure SSL Connection. No passwords stored locally.</span>
+            </div>
+
+            <div class="status-row">
+                <div class="status-item">
+                    <span class="status-label">Engine</span>
+                    <span class="status-val">ONLINE</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Database</span>
+                    <span class="status-val">CONNECTED</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Sensors</span>
+                    <span class="status-val awaiting">AWAITING</span>
+                </div>
+            </div>
+
         </div>
 
-        <div class="g_id_signin"
-             data-type="standard"
-             data-shape="rectangular"
-             data-theme="filled_black"
-             data-text="signin_with"
-             data-size="large"
-             data-logo_alignment="left">
+        <div style="text-align: center; margin-top: 15px; font-size: 10px; color: #444;">
+            FSociety Advanced Systems v7.0
         </div>
     </div>
 
+    <!-- Auth Logic (Preserved) -->
     <script>
         function handleCredentialResponse(response) {
             console.log("Encoded JWT ID token: " + response.credential);
-            
+
             // Send token to backend
             fetch('/auth/google', {
                 method: 'POST',
@@ -63,19 +237,20 @@
                 },
                 body: JSON.stringify({ token: response.credential })
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = data.redirect;
-                } else {
-                    alert('Login failed: ' + data.error);
-                }
-            })
-            .catch(err => {
-                console.error('Error:', err);
-                alert('Login error occurred');
-            });
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect;
+                    } else {
+                        alert('Login failed: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    alert('Login error occurred');
+                });
         }
     </script>
 </body>
+
 </html>
