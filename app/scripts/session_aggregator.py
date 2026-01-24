@@ -13,7 +13,7 @@ import requests
 from datetime import datetime
 
 # Gemini API key from environment
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyAwopfQLPFjFWUPQWmPTMMVB-IkNVEK2_s')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # FIXED: Use ONLY valid Gemini models with FULL names (confirmed by ListModels)
 # Order: cheapest/fastest first for fallback
