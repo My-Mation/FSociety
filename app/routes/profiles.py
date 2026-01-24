@@ -144,9 +144,9 @@ def get_profiles():
             vibration_status_text = None
             if vibration_data and "vibration_percent" in vibration_data:
                 percent = vibration_data["vibration_percent"]
-                if percent >= 99.9: vibration_status_text = "No vibration detected"
-                elif percent <= 0.1: vibration_status_text = "Always vibrating"
-                else: vibration_status_text = f"Intermittent vibration: {100-percent:.1f}% active"
+                if percent >= 99.9: vibration_status_text = "Always vibrating"
+                elif percent <= 0.1: vibration_status_text = "No vibration detected"
+                else: vibration_status_text = f"Intermittent vibration: {percent:.1f}% active"
 
             profiles.append({
                 "machine_id": machine_id,

@@ -52,10 +52,7 @@ def root():
 @login_required
 def index():
     try:
-        path = os.path.join(BASE_DIR, "templates", "index.html")
-        if not os.path.exists(path):
-            return f"DEBUG: File NOT found at {path} | BASE_DIR: {BASE_DIR}", 404
-        return send_file(path)
+        return render_template("index.html")
     except Exception as e:
         import traceback
         return f"ERROR: {str(e)}\n{traceback.format_exc()}", 500

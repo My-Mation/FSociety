@@ -1,0 +1,284 @@
+<!-- ===== LIVE DETECTION TAB (Strict UX Overhaul v6.0) ===== -->
+<div id="livedetection" class="tab-content">
+
+    <!-- Top Control Bar (Dominant) -->
+    <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+        <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 0.05em;">SYSTEM MONITOR
+            <span class="mode-badge idle" id="live-mode-badge"
+                style="font-size: 10px; padding: 4px 8px; vertical-align: middle;">IDLE</span>
+        </h3>
+        <div>
+            <button id="live-start-btn" onclick="startLiveDetection()">START MONITORING</button>
+            <button id="live-stop-btn" class="stop-btn" onclick="stopLiveDetection()" disabled>STOP</button>
+            <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()"
+                style="display: none; background: #5a9bd5; padding: 8px 16px; font-size: 12px; border: none; font-weight: 700; border-radius: 4px; cursor: pointer;">AI
+                ANALYSIS</button>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD GRID (24 Cols, 8px Gap) -->
+    <div class="grid-24" id="live-dashboard">
+
+        <!-- ============================================ -->
+        <!-- ROW 1: STATUS & KPIS                         -->
+        <!-- ============================================ -->
+
+        <!-- 1. Machine ID (Expanded Col-8) -->
+        <div class="tile col-8">
+            <div class="tile-header">
+                <span class="tile-title">DETECTED IDENTITY</span>
+                <span class="tile-title" style="font-size: 9px; color: #666;"
+                    title="Best match from trained profiles">SOURCE</span>
+            </div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-detected-machine" style="color: #5a9bd5; font-size: 20px;">--</div>
+                <div class="kpi-unit" style="margin-top: 5px;">AWAITING SIGNAL...</div>
+            </div>
+        </div>
+
+        <!-- 2. Detection Confidence (Col-4) -->
+        <div class="tile col-4">
+            <div class="tile-header">
+                <span class="tile-title">DETECTION CONFIDENCE (%)</span>
+            </div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-detection-confidence">0%</div>
+                <div class="kpi-unit"
+                    title="Probability that the current audio signature matches a known machine profile">MATCH
+                    PROBABILITY</div>
+            </div>
+        </div>
+
+        <!-- 3. Detection Lock (Col-4) -->
+        <div class="tile col-4">
+            <div class="tile-header">
+                <span class="tile-title">DETECTION LOCK</span>
+            </div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-stable-machines">0</div>
+                <div class="kpi-unit" title="Indicates whether the system has stabilized on a single machine identity">
+                    STABLE FRAMES</div>
+            </div>
+        </div>
+
+        <!-- 4. Session Time (Col-8) -->
+        <div class="tile col-8">
+            <div class="tile-header"><span class="tile-title">SESSION DURATION</span></div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-runtime">0s</div>
+                <div class="kpi-unit">ACTIVE MONITOR TIME</div>
+            </div>
+        </div>
+
+
+        <!-- ============================================ -->
+        <!-- ROW 2: AUDIO HISTORY & WAVEFORM              -->
+        <!-- ============================================ -->
+
+
+
+        <!-- LIVE WAVEFORM (Col-12) - SIDE BY SIDE -->
+        <div class="tile col-12" style="height: 550px; border-color: #444;">
+            <div class="tile-header">
+                <span class="tile-title" style="color: #3b82f6;">LIVE SIGNAL WAVEFORM</span>
+                <span class="tile-title" title="Real-time amplitude visualization">OSCILLOSCOPE (10ms WINDOW)</span>
+            </div>
+            <div class="tile-content no-pad">
+                <canvas id="live-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- AUDIO LEVEL HISTORY (Col-12, Side by Side) -->
+        <div class="tile col-12" style="height: 550px; border-color: #444;">
+            <div class="tile-header">
+                <span class="tile-title" style="color: #3b82f6;">Audio Level History (Session)</span>
+                <span class="tile-title" title="Fixed scale, full-session view">From server start to current time</span>
+            </div>
+            <div class="tile-content no-pad">
+                <canvas id="all-time-audio-chart"></canvas>
+            </div>
+        </div>
+
+
+        <!-- ============================================ -->
+        <!-- ROW 3: AUDIO DETAILS & TABLE                 -->
+        <!-- ============================================ -->
+
+        <div class="tile col-4">
+            <div class="tile-header"><span class="tile-title">FREQUENCY (HZ)</span></div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-freq">0</div>
+                <div class="kpi-unit">DOMINANT PEAK</div>
+            </div>
+        </div>
+
+        <div class="tile col-4">
+            <div class="tile-header"><span class="tile-title">AMPLITUDE (dB)</span></div>
+            <div class="tile-content">
+                <div class="kpi-value" id="live-amp">0</div>
+                <div class="kpi-unit">SIGNAL STRENGTH</div>
+            </div>
+        </div>
+
+        <div class="tile col-8" style="height: 180px;">
+            <div class="tile-header"><span class="tile-title">FFT SPECTRUM ANALYSIS</span></div>
+            <div class="tile-content no-pad">
+                <canvas id="live-spectrum-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="tile col-8" style="height: 180px;">
+            <div class="tile-header"><span class="tile-title">RECENT AUDIO SAMPLES</span></div>
+            <div class="tile-content no-pad">
+                <div class="dense-table-container">
+                    <table class="dense-table">
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>FREQ</th>
+                                <th>AMP</th>
+                                <th>CONF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-audio-frames"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ============================================ -->
+        <!-- ROW 4: SENSOR GROUP (GAS & VIBRATION)        -->
+        <!-- ============================================ -->
+
+        <!-- Gas Gauge (Col-6) -->
+        <div class="tile col-6" style="height: 260px;">
+            <div class="tile-header">
+                <span class="tile-title">GAS CONCENTRATION GAUGE (PPM)</span>
+            </div>
+            <div class="tile-content no-pad" style="padding: 10px; position: relative;">
+                <canvas id="live-gas-gauge"></canvas>
+                <div
+                    style="position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 10px; color: #888;">
+                    0 - 4200 PPM RANGE</div>
+            </div>
+        </div>
+
+        <!-- Metric Values (Col-3 + Col-3) -->
+        <div class="tile col-3">
+            <div class="tile-header"><span class="tile-title">GAS (PPM)</span></div>
+            <div class="tile-content">
+                <div class="kpi-value small" id="live-gas-value">2123</div>
+                <div class="kpi-unit" title="PPM = parts per million">CONCENTRATION</div>
+            </div>
+        </div>
+
+        <div class="tile col-3">
+            <div class="tile-header"><span class="tile-title">VIBRATION (G)</span></div>
+            <div class="tile-content">
+                <div class="kpi-value small" id="live-vibration-value">0.00</div>
+                <div class="kpi-unit" title="RMS = Root Mean Square energy">RMS ACCEL</div>
+            </div>
+        </div>
+
+        <!-- Histories (Col-6 + Col-6) -->
+        <div class="tile col-6" style="height: 200px;">
+            <div class="tile-header"><span class="tile-title">VIBRATION HISTORY (RMS)</span></div>
+            <div class="tile-content no-pad">
+                <canvas id="live-vibration-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="tile col-6" style="height: 200px;">
+            <div class="tile-header"><span class="tile-title">SYSTEM SENSOR SNAPSHOT (LIVE STATUS)</span></div>
+            <div class="tile-content no-pad">
+                <div class="dense-table-container">
+                    <table class="dense-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>VAL</th>
+                                <th>UNIT</th>
+                                <th>UPDATED</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-sensor-snapshot">
+                            <tr>
+                                <td>MIC01</td>
+                                <td>--</td>
+                                <td>dB</td>
+                                <td>--</td>
+                                <td><span class="status-cell-yellow">init...</span></td>
+                            </tr>
+                            <tr>
+                                <td>GAS01</td>
+                                <td>2123</td>
+                                <td>PPM</td>
+                                <td>--</td>
+                                <td><span class="status-cell-yellow">standby</span></td>
+                            </tr>
+                            <tr>
+                                <td>ACC01</td>
+                                <td>0.00</td>
+                                <td>G</td>
+                                <td>--</td>
+                                <td><span class="status-cell-yellow">standby</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- HIDDEN CHARTS & STATE LOG (Hidden but kept for Logic) -->
+        <div style="display: none;">
+            <canvas id="live-confidence-chart"></canvas> <!-- Deprecated vis, kept for ID safety -->
+            <div id="table-state-history"></div>
+            <!-- Start/Stop logic uses this but we don't show it anymore in strict mode? No wait, plan said 3 tables. -->
+            <!-- Re-adding State History Table if I missed it? -->
+            <!-- Wait, I only added Audio Table and Snapshot Table visible in Row 3/4. Where is State History? -->
+            <!-- I ran out of grid space in the strict plan? Let me check plan. -->
+            <!-- Plan: Row 3 Audio Table. Row 4 Snapshot. Where is State History? -->
+            <!-- Plan said "Audio Table (Col-8)". State History was removed from visual plan or merged? -->
+            <!-- Implementation Plan said "Audio Table (Col-8)". It seems I dropped State History from the *visual* plan in valid 24 cols. -->
+            <!-- User asked for 3 tables. I should add State History back. -->
+            <!-- Let's put State History below Audio Table or swap with something. -->
+            <!-- Actually, I can put State History in Row 4 next to Snapshot if I shrink specific tiles. -->
+            <!-- Or put it in a new Row 5. -->
+            <!-- Let's stick to the HTML I wrote above for now to avoid errors, and add State History as a HIDDEN table or in a collapsed view? -->
+            <!-- User said "Do NOT compress tables excessively". -->
+            <!-- I will add State History in a new Row 5 to be safe and compliant. -->
+
+            <div id="live-gas-status-text"></div>
+            <div id="live-vibration-intensity"></div>
+            <div id="live-conf"></div> <!-- Raw conf vs Percentage -->
+            <div id="live-rms-level"></div>
+        </div>
+
+    </div>
+
+    <!-- ROW 5: STATE HISTORY (Added to ensure 3 tables compliance) -->
+    <div class="grid-24">
+        <div class="tile col-24" style="height: 160px; margin-top: -10px;">
+            <div class="tile-header"><span class="tile-title">DETECTION STATE EVENT LOG</span></div>
+            <div class="tile-content no-pad">
+                <div class="dense-table-container">
+                    <table class="dense-table">
+                        <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>STATE</th>
+                                <th>CONFIDENCE</th>
+                                <th>TRIGGER SOURCE</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-state-history"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

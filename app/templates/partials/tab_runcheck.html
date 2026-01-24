@@ -1,0 +1,35 @@
+<!-- ===== RUN CHECK TAB ===== -->
+<div id="runcheck" class="tab-content">
+    <div class="status info" id="runcheck-status">Click "Run Check" to compare current audio against stored
+        profiles</div>
+
+    <h3>Run Check for Machine</h3>
+    <p style="color: #888; margin-bottom: 25px; font-size: 14px; font-weight: 400;">
+        Performs a one-time check to identify which machine (if any) matches the current sound.
+        No live graphs – logical check only.
+    </p>
+
+    <div class="control-panel">
+        <button id="runcheck-btn" onclick="runCheck()" style="font-size: 16px; padding: 15px 30px;">
+            Run Check for Machine
+        </button>
+        <button id="runcheck-stop" class="stop-btn" onclick="stopRunCheck()" disabled style="margin-left: 10px;">
+            Stop
+        </button>
+
+        <div id="runcheck-progress" style="display: none; margin-top: 15px;">
+            <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="info-value" id="runcheck-progress-text">Analyzing...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check Results (shown after check completes) -->
+    <div class="check-results" id="runcheck-results" style="display: none;">
+        <h4>Check Results</h4>
+        <div id="runcheck-results-list">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
