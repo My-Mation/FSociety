@@ -40,6 +40,8 @@ python server.py
 ## 📋 Features
 
 ### ✅ Implemented & Tested
+### ✅ Implemented & Tested
+- ✅ **UI Overhaul (v2.1)**: Dark Industrial Theme, Roboto Serif Typography, Redesigned Login.
 - ✅ Extract **3 FFT peaks** per frame (not just 1)
 - ✅ IQR-based machine profile training
 - ✅ Simultaneous multi-machine detection
@@ -59,6 +61,8 @@ python server.py
 | Request Rate | 2 req/sec (optimized) |
 | Stability Window | 15 batches (~7.5s) |
 | Detection Threshold | 60% of recent batches |
+| **Typography** | **Roboto Serif** (Global) |
+| **Theme** | **Dark Industrial** (#0f0f0f) |
 
 ---
 
@@ -593,6 +597,6 @@ Refer to:
 
 ✅ **System Ready for Production**
 
-**Last Updated:** January 9, 2026  
-**Version:** 2.0 (Multi-Machine Detection)  
+**Last Updated:** January 25, 2026  
+**Version:** 2.1 (UI Overhaul & Industrial Branding)  
 **Status:** Stable & Tested
