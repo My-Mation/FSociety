@@ -1,0 +1,32 @@
+/* ==========================================
+   RUN CHECK TAB STYLES
+   ========================================== */
+
+.check-results {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.check-results h4 {
+    margin: 0 0 15px 0;
+    color: #e0e0e0;
+}
+
+.check-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 12px;
+}
+
+.check-result-item .match {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.check-result-item .no-match {
+    color: #666;
+}

@@ -37,6 +37,7 @@ let isLiveDetecting = false;
 let liveBatch = [];
 let liveBatchTimer = 0;
 let liveESP32PollTimer = null;
+let logTimer = null; // New Event Log Timer
 
 // Canvas contexts
 let calibrationCanvasCtx = null;
@@ -90,12 +91,11 @@ function initializeCanvases() {
         calibSpectrum.height = 150;
     }
 
-    const calibHistory = document.getElementById('calibration-history');
-    if (calibHistory) {
-        calibrationHistoryCtx = calibHistory.getContext('2d');
-        calibHistory.width = calibHistory.offsetWidth || 800;
-        calibHistory.height = 120;
-    }
+    const calibHistory = document.getElementById('calibration-history'); // Kept for safety if ID exists, but we moved to new charts
+
+    // NEW Calibration Graphs
+    CalibrationAudioGraph.init();
+    CalibrationVibrationGraph.init();
 
 
 
@@ -133,6 +133,9 @@ function initializeCanvases() {
     // NEW: Gas Speedometer (Chart.js)
     initGasGauge();
 
+    // Auto-start Environmental Monitoring (Gas/Vibration) immediately
+    startLiveESP32Polling();
+
     // Resize listener
     window.addEventListener('resize', () => {
         resizeCanvas(document.getElementById('live-canvas'));
@@ -153,40 +156,93 @@ function resizeCanvas(canvas) {
 // Gas Gauge Chart Instance (Global)
 let gasGaugeChart = null;
 
-// Gas Gauge Needle Plugin
+// Gas Gauge Needle Plugin (Enhanced for Industrial Look)
+// Gas Gauge Needle Plugin (Enhanced for Industrial Look)
 const gaugeNeedle = {
     id: 'gaugeNeedle',
-    afterDatasetDraw(chart, args, plugins) {
+    afterDraw(chart, args, plugins) {
         const { ctx, data } = chart;
         const xCenter = chart.getDatasetMeta(0).data[0].x;
         const yCenter = chart.getDatasetMeta(0).data[0].y;
         const outerRadius = chart.getDatasetMeta(0).data[0].outerRadius;
         const innerRadius = chart.getDatasetMeta(0).data[0].innerRadius;
         const widthSlice = (outerRadius - innerRadius) / 2;
-        const radius = 15;
-        const angle = Math.PI + (data.datasets[0].needleValue / 4200) * Math.PI;
+        const radius = 5; // Smaller hub
+
+        // Needle Angle Calculation (Total 4200 = 180 degrees)
+        // Chart Rotation -90 deg (Top Arch)
+        // 0 val = Left (-90 deg from Top?) -> Wait.
+        // Chart.js: 0 deg = East (Right).
+        // -90 deg = North (Top).
+        // -180 deg = West (Left).
+        // So Arc starts at -180 (Left) and goes to 0 (Right).
+        // Needle at 0 should be -PI.
+        // Needle at Max should be 0.
+
+        const value = data.datasets[0].needleValue || 0;
+        const max = 4200;
+        const percentage = Math.min(Math.max(value / max, 0), 1);
+
+        // Angle: Start at -PI (Left), End at 0 (Right).
+        const angle = -Math.PI + (percentage * Math.PI);
 
         ctx.save();
         ctx.translate(xCenter, yCenter);
         ctx.rotate(angle);
+
+        // Draw Needle
         ctx.beginPath();
-        ctx.moveTo(0 - radius, 0);
-        ctx.lineTo(0, 0 - outerRadius - widthSlice);
-        ctx.lineTo(0 + radius, 0);
+        ctx.moveTo(0 - radius, 0); // Center Hub Left
+        ctx.lineTo(0, 0 - outerRadius + 10); // Tip
+        ctx.lineTo(0 + radius, 0); // Center Hub Right
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fill();
+        ctx.restore();
+
+        // Draw Center Dot
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(xCenter, yCenter, radius + 2, 0, Math.PI * 2);
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.restore();
 
-        // Draw Ticks (Simple)
+        // Draw Industrial Ticks & Labels
         ctx.save();
-        ctx.font = '10px Roboto';
-        ctx.fillStyle = '#666';
+        ctx.font = 'bold 9px Inter';
+        ctx.fillStyle = '#888';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        // 0
-        ctx.fillText('0', xCenter - outerRadius + 10, yCenter + 20);
-        // Max
-        ctx.fillText('4200', xCenter + outerRadius - 20, yCenter + 20);
+
+        const ticks = [0, 500, 1000, 2000, 3000, 4200];
+
+        ticks.forEach(tickVal => {
+            const tickPct = tickVal / 4200;
+            // Ticks match needle angle: -PI to 0
+            const tickAngle = -Math.PI + (tickPct * Math.PI);
+
+            // Text Position (Inside inner radius)
+            const textRadius = innerRadius - 15;
+            const tx = xCenter + Math.cos(tickAngle) * textRadius;
+            const ty = yCenter + Math.sin(tickAngle) * textRadius;
+
+            ctx.fillText(tickVal.toString(), tx, ty);
+
+            // Tick Mark
+            const markStart = innerRadius - 5;
+            const markEnd = innerRadius;
+            const mx1 = xCenter + Math.cos(tickAngle) * markStart;
+            const my1 = yCenter + Math.sin(tickAngle) * markStart;
+            const mx2 = xCenter + Math.cos(tickAngle) * markEnd;
+            const my2 = yCenter + Math.sin(tickAngle) * markEnd;
+
+            ctx.beginPath();
+            ctx.moveTo(mx1, my1);
+            ctx.lineTo(mx2, my2);
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        });
         ctx.restore();
     }
 };
@@ -199,18 +255,30 @@ function initGasGauge() {
         gasGaugeChart.destroy();
     }
 
+    // Industrial Zones: Safe (0-300), Warn(300-700), Hazard(700-4200)
+    // 4200 Total. 
+    // Seg 1: 300
+    // Seg 2: 400 (700-300)
+    // Seg 3: 3500 (4200-700)
+
     gasGaugeChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Value', 'Max'],
+            labels: ['Safe', 'Warning', 'Hazard'],
             datasets: [{
-                data: [0, 4200],
+                data: [300, 400, 3500],
                 needleValue: 0,
-                backgroundColor: ['#3b82f6', '#222'],
-                borderWidth: 0,
+                backgroundColor: [
+                    '#15803d', // Dark Green (Safe)
+                    '#a16207', // Dark Yellow (Warn)
+                    '#991b1b'  // Dark Red (Haz)
+                ],
+                borderWidth: 1,
+                borderColor: '#111',
+                hoverOffset: 0,
                 circumference: 180,
-                rotation: 270,
-                cutout: '80%'
+                rotation: -90, // Start at Left (West) - Chart.js 3/4 standard for semi-circle
+                cutout: '75%'
             }]
         },
         options: {
@@ -220,7 +288,7 @@ function initGasGauge() {
                 legend: { display: false },
                 tooltip: { enabled: false }
             },
-            layout: { padding: 20 },
+            layout: { padding: 0 },
             animation: false
         },
         plugins: [gaugeNeedle]
@@ -230,16 +298,153 @@ function initGasGauge() {
 function updateGasGauge(value) {
     if (!gasGaugeChart) return;
 
-    let color = '#22c55e'; // Safe
-    if (value > GAS_SAFE_LIMIT) color = '#eab308'; // Warning
-    if (value > GAS_HAZARD_LIMIT) color = '#dc2626'; // Hazardous
-
-    gasGaugeChart.data.datasets[0].backgroundColor[0] = color;
-    gasGaugeChart.data.datasets[0].data[0] = value;
-    gasGaugeChart.data.datasets[0].data[1] = 4200 - value;
+    // Just update needle, zones stay static
     gasGaugeChart.data.datasets[0].needleValue = value;
-    gasGaugeChart.update('none');
+    gasGaugeChart.update('none'); // No animation for prompt feeling
 }
+
+// ==========================================
+// GAS HISTORY GRAPH (NEW MONDATORY)
+// ==========================================
+
+
+// ==========================================
+// CALIBRATION GRAPHS (NEW)
+// ==========================================
+const CalibrationAudioGraph = {
+    chart: null,
+    data: [],
+    labels: [],
+
+    init() {
+        const ctx = document.getElementById('calibration-audio-chart');
+        if (!ctx) return;
+
+        this.data = [];
+        this.labels = [];
+
+        if (this.chart) this.chart.destroy();
+
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.labels,
+                datasets: [{
+                    label: 'Amplitude',
+                    data: this.data,
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Session Time (s)', color: '#666', font: { size: 10 } },
+                        ticks: { color: '#666', maxTicksLimit: 10 },
+                        grid: { color: '#333' }
+                    },
+                    y: {
+                        min: 0, max: 20, // Match Live view scale logic
+                        ticks: { color: '#666' },
+                        grid: { color: '#333' }
+                    }
+                }
+            }
+        });
+    },
+
+    reset() {
+        this.data = [];
+        this.labels = [];
+        if (this.chart) {
+            this.chart.data.labels = this.labels;
+            this.chart.data.datasets[0].data = this.data;
+            this.chart.update();
+        }
+    },
+
+    update(time, amplitude) {
+        if (!this.chart) return;
+        this.labels.push(time.toFixed(1));
+        this.data.push(amplitude);
+        this.chart.update('none');
+    }
+};
+
+const CalibrationVibrationGraph = {
+    chart: null,
+    data: [],
+    labels: [],
+
+    init() {
+        const ctx = document.getElementById('calibration-vibration-chart');
+        if (!ctx) return;
+
+        this.data = [];
+        this.labels = [];
+
+        if (this.chart) this.chart.destroy();
+
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.labels,
+                datasets: [{
+                    label: 'Vibration (RMS)',
+                    data: this.data,
+                    borderColor: '#eab308', // Warning Yellow for Vib
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Session Time (s)', color: '#666', font: { size: 10 } },
+                        ticks: { color: '#666', maxTicksLimit: 10 },
+                        grid: { color: '#333' }
+                    },
+                    y: {
+                        min: 0, max: 1.0, // Assumed G range
+                        ticks: { color: '#666' },
+                        grid: { color: '#333' }
+                    }
+                }
+            }
+        });
+    },
+
+    reset() {
+        this.data = [];
+        this.labels = [];
+        if (this.chart) {
+            this.chart.data.labels = this.labels;
+            this.chart.data.datasets[0].data = this.data;
+            this.chart.update();
+        }
+    },
+
+    update(time, vibValue) {
+        if (!this.chart) return;
+        this.labels.push(time.toFixed(1));
+        this.data.push(vibValue);
+        this.chart.update('none');
+    }
+};
 
 // ==========================================
 // AUDIO LEVEL HISTORY MONITOR (CLEAN IMPLEMENTATION)
@@ -416,13 +621,13 @@ async function sendLiveBatch() {
             updateStateHistory('DETECTING', '60%', 'THRESHOLD');
 
         } else if (fallback) {
-            // SEMANTIC FIX: "Machine 1?" -> "Machine 1 (Possible Mismatch)"
+            // SEMANTIC FIX: "Machine 1?" -> "Machine 1 (Slightly Different)"
             const machineName = fallback.machine.replace('_', ' ').toUpperCase();
-            nameEl.textContent = `${machineName} (POSSIBLE MISMATCH)`;
+            nameEl.textContent = `${machineName} (SLIGHTLY DIFFERENT)`;
             nameEl.style.color = '#eab308'; // Warning Yellow
 
             const confPercent = (fallback.confidence * 100).toFixed(0);
-            confEl.textContent = `LOW CONFIDENCE (${confPercent}%)`;
+            confEl.textContent = `${confPercent}%`; // Just percentage, no text
 
             updateStateHistory('UNCERTAIN', `${confPercent}%`, 'HEURISTIC');
 
@@ -441,35 +646,6 @@ async function sendLiveBatch() {
 
 // ...
 
-async function fetchLiveESP32Data() {
-    try {
-        const res = await fetch(BACKEND_URL + '/latest_esp32');
-        const data = await res.json();
-
-        // PLACEHOLDER: 0.00 G instead of "OFF"
-        const vibValue = data.vibration || 0;
-        document.getElementById('live-vibration-value').textContent = vibValue.toFixed(2);
-
-        // Update bar
-        const vibPercent = Math.min(vibValue * 100, 100);
-        document.getElementById('live-vibration-bar').style.width = vibPercent + '%';
-
-        // PLACEHOLDER: 2123 PPM (Last known or Dummy) instead of "OFF"
-        // If data is missing (0), show placeholder, else show value
-        const gasRaw = data.gas_raw || 2123; // DUMMY PLACEHOLDER if 0
-        const gasStatus = data.gas_status || 'STANDBY';
-
-        document.getElementById('live-gas-value').textContent = gasRaw;
-
-        // Update Gauge
-        updateGasGauge(gasRaw);
-
-        // Update Snapshot Table
-        updateSensorSnapshotTable(gasRaw, gasStatus, vibValue);
-
-        // ...
-    } catch (e) { console.warn(e); }
-}
 
 // Duplicate liveDetectionLoop removed
 
@@ -576,7 +752,12 @@ async function startListeningForMachine(machineId) {
     calibrationTimer = 0;
     calibrationVibrationSamples = [];
     calibrationGasSamples = [];
+    calibrationGasSamples = [];
     amplitudeHistory = [];  // Reset amplitude history
+
+    // Reset Graphs
+    CalibrationAudioGraph.reset();
+    CalibrationVibrationGraph.reset();
 
     // Update UI
     document.getElementById('cal-mode-badge').textContent = 'LISTENING';
@@ -667,7 +848,12 @@ function calibrationLoop() {
     // Draw visualizations
     drawWaveform(timeDomainData, calibrationCanvasCtx);
     if (calibrationSpectrumCtx) drawSpectrum(frequencyData, calibrationSpectrumCtx, nyquist);
-    if (calibrationHistoryCtx) drawHistory(amplitudeHistory, calibrationHistoryCtx, 'Amplitude');
+    // Draw visualizations
+    drawWaveform(timeDomainData, calibrationCanvasCtx);
+    if (calibrationSpectrumCtx) drawSpectrum(frequencyData, calibrationSpectrumCtx, nyquist);
+
+    // Update New Graphs
+    CalibrationAudioGraph.update(calibrationTimer, amplitude);
 
     calibrationTimer += 0.1;
 
@@ -691,6 +877,10 @@ function startCalibrationESP32Polling() {
                 calibrationVibrationSamples.push(data.vibration);
                 document.getElementById('cal-vib-count').textContent = calibrationVibrationSamples.length;
                 console.log('Vibration samples now:', calibrationVibrationSamples.length);
+
+                // Update Graph
+                // Use calibrationTimer which is roughly synced
+                CalibrationVibrationGraph.update(calibrationTimer, data.vibration);
             }
             if (data.gas_raw !== undefined) {
                 calibrationGasSamples.push({ raw: data.gas_raw, status: data.gas_status });
@@ -948,102 +1138,132 @@ async function loadProfiles() {
         const container = document.getElementById('profiles-list');
 
         if (profiles.length === 0) {
-            container.innerHTML = '<p style="color: #888;">No profiles trained yet.</p>';
+            container.innerHTML = '<p style="color: #666; text-align: center; padding: 40px; font-style: italic;">No profiles trained yet. Go to Calibration Tab to add machines.</p>';
             return;
         }
 
-        container.innerHTML = profiles.map(p => `
-                    <div class="profile-card">
-                        <div class="profile-header">
-                            <span>${p.machine_id.replace('_', ' ').toUpperCase()}</span>
-                            <button class="delete-btn" onclick="deleteProfile('${p.machine_id}')">🗑️ Delete</button>
-                        </div>
+        container.innerHTML = profiles.map(p => {
+            // Calculate extra metrics for display
+            const vibPercent = p.vibration_data ? p.vibration_data.vibration_percent : 0;
+            const vibColor = vibPercent > 50 ? '#dc2626' : vibPercent > 20 ? '#eab308' : '#3b82f6';
 
-                        <div class="profile-section">
-                            <h4>Audio Signature</h4>
-                            <div class="profile-content">
-                                <div class="profile-data-grid">
-                                    <div class="profile-data-item">
-                                        <div class="profile-label">Median Frequency</div>
-                                        <div class="profile-value">${p.median_freq} Hz</div>
-                                    </div>
-                                    <div class="profile-data-item">
-                                        <div class="profile-label">IQR Range</div>
-                                        <div class="profile-value">${p.iqr_low} – ${p.iqr_high} Hz</div>
-                                    </div>
-                                    <div class="profile-data-item">
-                                        <div class="profile-label">Band Count</div>
-                                        <div class="profile-value">${p.bands_count || 0} bands</div>
-                                    </div>
-                                </div>
+            const gasStatus = p.gas_data ? p.gas_data.status : 'NO_DATA';
+            const gasColorClass = gasStatus === 'SAFE' ? 'status-safe' :
+                gasStatus === 'MODERATE' ? 'status-moderate' :
+                    gasStatus === 'HAZARDOUS' ? 'status-hazard' : 'status-nodata';
+
+            const gasLabel = gasStatus === 'SAFE' ? 'Safe' :
+                gasStatus === 'MODERATE' ? 'Moderate' :
+                    gasStatus === 'HAZARDOUS' ? 'Hazardous' : 'No Data';
+
+            return `
+            <div class="industrial-card">
+                <!-- Section A: Header -->
+                <div class="profile-main-header">
+                    <div class="profile-name">
+                        ${p.machine_id.replace('_', ' ').toUpperCase()}
+                        <span class="profile-status-badge">ACTIVE</span>
+                    </div>
+                     <button class="delete-btn" onclick="deleteProfile('${p.machine_id}')">
+                        <span style="font-size: 14px; margin-right: 5px;">🗑️</span> DELETE
+                    </button>
+                </div>
+
+                <div class="profile-grid">
+                    <!-- Left Column: Audio Data (70%) -->
+                    <div class="profile-col-left">
+                        <!-- Section B: Audio Signature -->
+                        <div class="sub-card">
+                            <div class="sub-card-header">Audio Signature Analysis</div>
+                            <div class="sub-card-body">
+                                <table class="metric-table">
+                                    <tr>
+                                        <td class="metric-label">Median Frequency</td>
+                                        <td class="metric-value">${p.median_freq} <span class="metric-unit">Hz</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="metric-label">IQR Range (Spread)</td>
+                                        <td class="metric-value">${p.iqr_low} – ${p.iqr_high} <span class="metric-unit">Hz</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="metric-label">Detected Bands</td>
+                                        <td class="metric-value">${p.bands_count || 0} <span class="metric-unit">bands</span></td>
+                                    </tr>
+                                </table>
+
                                 ${p.freq_bands && p.freq_bands.length > 0 ? `
-                                    <div class="profile-subcontent">
-                                        <div class="profile-sublabel">Harmonic Bands</div>
-                                        ${p.freq_bands.map((b, i) => `
-                                            <div class="profile-band">Band ${i + 1}: ${b.low.toFixed(0)} – ${b.high.toFixed(0)} Hz (${b.samples} samples)</div>
-                                        `).join('')}
+                                    <div class="bands-container">
+                                        <div class="bands-title">Harmonic Frequency Bands</div>
+                                        <div class="bands-grid">
+                                            ${p.freq_bands.map((b, i) => `
+                                                <div class="band-chip">
+                                                    <span>Band ${i + 1}</span>
+                                                    ${b.low.toFixed(0)}-${b.high.toFixed(0)} Hz
+                                                </div>
+                                            `).join('')}
+                                        </div>
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
-
-                        <div class="profile-section">
-                            <h4>Vibration Pattern</h4>
-                            <div class="profile-content">
-                                ${p.vibration_data ? `
-                                    <div class="profile-data-grid">
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Samples Collected</div>
-                                            <div class="profile-value">${p.vibration_data.samples}</div>
-                                        </div>
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Vibration Level</div>
-                                            <div class="profile-value" style="color: #16a34a;">${(p.vibration_data.vibration_percent).toFixed(1)}%</div>
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="profile-placeholder">No vibration events recorded</div>
-                                `}
-                            </div>
-                        </div>
-
-                        <div class="profile-section">
-                            <h4>Air Quality</h4>
-                            <div class="profile-content">
-                                ${p.gas_data ? `
-                                    <div class="profile-data-grid">
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Samples Collected</div>
-                                            <div class="profile-value">${p.gas_data.valid_samples || p.gas_data.samples} / ${p.gas_data.samples}</div>
-                                        </div>
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Average Level</div>
-                                            <div class="profile-value">${p.gas_data.avg_raw}</div>
-                                        </div>
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Range</div>
-                                            <div class="profile-value">${p.gas_data.min_raw} – ${p.gas_data.max_raw}</div>
-                                        </div>
-                                        <div class="profile-data-item">
-                                            <div class="profile-label">Status</div>
-                                            <div class="profile-value" style="color: ${p.gas_data.status === 'SAFE' ? '#16a34a' : p.gas_data.status === 'MODERATE' ? '#eab308' : p.gas_data.status === 'NO_DATA' ? '#666' : '#dc2626'};">
-                                                ${p.gas_data.status === 'SAFE' ? 'Safe' : p.gas_data.status === 'MODERATE' ? 'Moderate' : p.gas_data.status === 'NO_DATA' ? 'No Data' : 'Hazardous'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="profile-placeholder">Stable signal recorded</div>
-                                `}
-                            </div>
-                        </div>
-
-                        <div class="profile-footer">
-                            Created: ${p.created_at || 'Unknown'}
-                        </div>
                     </div>
-                `).join('');
+
+                    <!-- Right Column: Environmental (30%) -->
+                    <div class="profile-col-right">
+                        
+                        <!-- Section C: Vibration Pattern -->
+                        <div class="sub-card">
+                            <div class="sub-card-header">Vibration Pattern</div>
+                            <div class="sub-card-body">
+                                ${p.vibration_data ? `
+                                    <div class="compact-stat">
+                                        <span class="compact-label">Samples</span>
+                                        <span class="compact-value">${p.vibration_data.samples}</span>
+                                    </div>
+                                    <div class="compact-stat">
+                                        <span class="compact-label">Intensity</span>
+                                        <span class="compact-value stat-highlight" style="color: ${vibColor}">${vibPercent.toFixed(1)}%</span>
+                                    </div>
+                                    <div class="vib-bar-bg">
+                                        <div class="vib-bar-fill" style="width: ${Math.min(vibPercent, 100)}%; background-color: ${vibColor}"></div>
+                                    </div>
+                                ` : `
+                                    <div style="color: #666; font-size: 12px; font-style: italic;">No vibration data</div>
+                                `}
+                            </div>
+                        </div>
+
+                        <!-- Section D: Air Quality -->
+                        <div class="sub-card">
+                            <div class="sub-card-header">Air Quality</div>
+                            <div class="sub-card-body">
+                                ${p.gas_data ? `
+                                    <div class="compact-stat">
+                                        <span class="compact-label">Samples</span>
+                                        <span class="compact-value">${p.gas_data.valid_samples || p.gas_data.samples}</span>
+                                    </div>
+                                    <div class="compact-stat">
+                                        <span class="compact-label">Avg Level</span>
+                                        <span class="compact-value">${p.gas_data.avg_raw}</span>
+                                    </div>
+                                    <div class="compact-stat" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333">
+                                        <span class="compact-label">Status</span>
+                                        <span class="compact-value ${gasColorClass}">${gasLabel}</span>
+                                    </div>
+                                ` : `
+                                    <div style="color: #666; font-size: 12px; font-style: italic;">No gas data</div>
+                                `}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
     } catch (error) {
         console.error('Error loading profiles:', error);
+        document.getElementById('profiles-list').innerHTML = '<p style="color: #dc2626; text-align: center;">Error loading profiles. Check console.</p>';
     }
 }
 
@@ -1548,6 +1768,8 @@ async function startLiveDetection() {
     confidenceHistory = [];
 
     // Start History Graph
+    // Start History Graph
+    AudioHistoryGraph.start();
     AudioHistoryGraph.start();
 
 
@@ -1563,11 +1785,14 @@ async function startLiveDetection() {
 
     updateStatus('livedetection', '🎤 Live detection running...', 'success');
 
-    // Start ESP32 polling for live mode
+    // Live ESP32 polling is now auto-started at init, but verify here
     startLiveESP32Polling();
 
     // Start audio detection loop
     liveDetectionLoop();
+
+    // Start 5-second Event Log Timer
+    logTimer = setInterval(logSystemSnapshot, 5000);
 }
 
 function liveDetectionLoop() {
@@ -1678,57 +1903,6 @@ function liveDetectionLoop() {
     setTimeout(liveDetectionLoop, 100);
 }
 
-async function sendLiveBatch() {
-    try {
-        const response = await fetch(BACKEND_URL + '/ingest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                frames: liveBatch,
-                mode: 'live'
-            })
-        });
-
-        const data = await response.json();
-
-        // Update machine detection display
-        const card = document.getElementById('live-machine-card');
-        const nameEl = document.getElementById('live-detected-machine');
-        const confEl = document.getElementById('live-detection-confidence');
-        const stableEl = document.getElementById('live-stable-machines');
-
-        const detected = data.running_machines_raw || [];
-        const stable = data.running_machines || [];
-
-        const dominantFreq = frequencyHistory[frequencyHistory.length - 1] || 0;
-        const fallback = getClosestMachine(dominantFreq);
-
-        if (stable.length > 0) {
-            nameEl.textContent = stable.map(m => m.replace('_', ' ').toUpperCase()).join(', ');
-            confEl.textContent = 'LOCKED';
-            updateStateHistory('LOCKED', '99%', 'AI_MATCH');
-
-        } else if (detected.length > 0) {
-            nameEl.textContent = detected.map(m => m.replace('_', ' ').toUpperCase()).join(', ');
-            confEl.textContent = 'DETECTING';
-            updateStateHistory('DETECTING', '60%', 'THRESHOLD');
-
-        } else if (fallback) {
-            nameEl.textContent = fallback.machine.replace('_', ' ').toUpperCase() + '?';
-            confEl.textContent = `~${(fallback.confidence * 100).toFixed(0)}%`;
-            updateStateHistory('LISTENING', (fallback.confidence * 100).toFixed(0) + '%', 'HEURISTIC');
-
-        } else {
-            nameEl.textContent = '--';
-            confEl.textContent = 'IDLE';
-        }
-
-        stableEl.textContent = stable.length > 0 ? stable.length : '0';
-
-    } catch (err) {
-        console.warn('Live batch error:', err);
-    }
-}
 
 // ==========================================
 // NEW TABLE LOGIC (High Density)
@@ -1756,30 +1930,50 @@ function updateAudioFramesTable(batch) {
     }
 }
 
-let lastState = '';
-function updateStateHistory(state, conf, trigger) {
-    if (state === lastState) return;
-    lastState = state;
-
+// NEW: 5-Second System Snapshot Log
+function logSystemSnapshot() {
     const tbody = document.getElementById('table-state-history');
     if (!tbody) return;
 
-    let colorClass = 'status-cell-yellow';
-    if (state === 'LOCKED') colorClass = 'status-cell-green';
-    if (state === 'IDLE') colorClass = 'status-cell-red';
+    // 1. Gather Data
+    const time = new Date().toLocaleTimeString();
 
+    // Machine Name
+    const machineNameEl = document.getElementById('live-detected-machine');
+    let machineName = machineNameEl ? machineNameEl.textContent : '--';
+    if (machineName.includes('MATCH')) machineName = machineName.replace(' (POSSIBLE MATCH)', '').replace(' (SLIGHTLY DIFFERENT)', '');
+
+    // Values (Get from UI to match user view)
+    const freq = document.getElementById('live-freq') ? document.getElementById('live-freq').textContent : '--';
+    const amp = document.getElementById('live-amp') ? document.getElementById('live-amp').textContent : '--';
+    const vib = document.getElementById('live-vibration-value') ? document.getElementById('live-vibration-value').textContent : '0.00';
+    const gas = document.getElementById('live-gas-value') ? document.getElementById('live-gas-value').textContent : '--';
+
+    // 2. Determine Row Color based on Gas/Vib limits
+    let rowClass = ''; // Default white/gray text
+    const gasVal = parseInt(gas) || 0;
+    const vibVal = parseFloat(vib) || 0;
+
+    if (gasVal > 700 || vibVal > 0.5) rowClass = 'status-cell-red';
+    else if (gasVal > 300) rowClass = 'status-cell-yellow';
+
+    // 3. Construct Row
     const row = `
         <tr>
-            <td>${new Date().toLocaleTimeString()}</td>
-            <td><span class="${colorClass}">${state}</span></td>
-            <td>${conf}</td>
-            <td>${trigger}</td>
+            <td>${time}</td>
+            <td style="font-weight:bold; color:#fff;">${machineName}</td>
+            <td>${freq}</td>
+            <td>${amp}</td>
+            <td><span class="${vibVal > 0.5 ? 'status-cell-red' : ''}">${vib}</span></td>
+            <td><span class="${gasVal > 300 ? 'status-cell-yellow' : ''}">${gas}</span></td>
         </tr>
     `;
+
+    // 4. Prepend
     tbody.innerHTML = row + tbody.innerHTML;
 
-    // Limit rows
-    while (tbody.children.length > 8) {
+    // 5. Prune (Keep last 50 entries)
+    while (tbody.children.length > 50) {
         tbody.removeChild(tbody.lastChild);
     }
 }
@@ -1840,7 +2034,8 @@ async function fetchLiveESP32Data() {
 
         // 2. Parse Data Safe Defaults
         const vibValue = data.vibration || 0;
-        const gasRaw = data.gas_raw || 2123; // Placeholder if missing
+        // Fix: Allow 0 as valid gas reading. Only use 2123 if undefined.
+        const gasRaw = (data.gas_raw !== undefined && data.gas_raw !== null) ? data.gas_raw : 2123;
         const gasStatus = data.gas_status || 'STANDBY';
 
         // 3. Update UI with Guards
@@ -1892,10 +2087,8 @@ async function fetchLiveESP32Data() {
         if (ui.gasCanvas && gasHistory.length > 0) {
             // Re-init context if lost
             if (!liveGasCtx || ui.gasCanvas.width === 0) {
-                liveGasCtx = ui.gasCanvas.getContext('2d');
-                resizeCanvas(ui.gasCanvas);
+                // Removed legacy mini-chart draw to prevent conflict with GasHistoryGraph
             }
-            if (liveGasCtx) drawMiniLineChart(gasHistory, liveGasCtx, '#eab308', 5000, 'gas');
         }
 
         if (ui.vibCanvas && vibrationHistory.length > 0) {
@@ -1914,9 +2107,16 @@ async function fetchLiveESP32Data() {
 function stopLiveDetection() {
     isLiveDetecting = false;
     liveBatch = [];
+    liveBatch = [];
     liveBatchTimer = 0;
 
-    stopLiveESP32Polling();
+    if (logTimer) {
+        clearInterval(logTimer);
+        logTimer = null;
+    }
+
+    // Do NOT stop environment polling (Gas/Vib) when audio detection stops
+    // stopLiveESP32Polling();
 
     // Record session end time
     window.liveSessionStopTime = new Date().toISOString().slice(0, 19);

@@ -176,6 +176,31 @@
             color: #93c5fd;
         }
 
+        /* Table Status Cells */
+        .status-cell-green {
+            color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .status-cell-yellow {
+            color: #eab308;
+            background: rgba(234, 179, 8, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .status-cell-red {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
         /* ========== INDUSTRIAL GRID SYSTEM (24-COL) ========== */
         .grid-24 {
             display: grid;
@@ -978,4 +1003,274 @@
 
         .logout-btn:hover {
             background: #b91c1c;
+        }
+
+        /* ==========================================
+   MACHINE PROFILES REDESIGN
+   ========================================== */
+
+        /* Page Header */
+        .profiles-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .profiles-title-group h3 {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .profiles-title-group p {
+            margin: 5px 0 0 0;
+            color: #888;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            background: #1a1a1a;
+            border: 1px solid #5a9bd5;
+            color: #5a9bd5;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #5a9bd5;
+            color: #000;
+        }
+
+        /* Main Profile Card Wrapper */
+        .industrial-card {
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 4px;
+            /* Industrial squared corners */
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Section A: Header */
+        .profile-main-header {
+            background: #1f1f1f;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .profile-name {
+            font-family: 'Roboto', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #e0e0e0;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-status-badge {
+            font-size: 11px;
+            background: #166534;
+            color: #86efac;
+            padding: 2px 8px;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Grid Layout */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 7fr 3fr;
+            /* 70% 30% split */
+            gap: 0;
+            /* Internal borders handle separation */
+        }
+
+        @media (max-width: 900px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Columns */
+        .profile-col-left {
+            padding: 20px;
+            border-right: 1px solid #333;
+        }
+
+        .profile-col-right {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: #181818;
+        }
+
+        /* Sub-Cards (Sections B, C, D) */
+        .sub-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 0;
+            /* Controlled by gap */
+        }
+
+        .sub-card-header {
+            background: #252525;
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            font-family: 'Roboto', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sub-card-body {
+            padding: 15px;
+        }
+
+        /* Data Tables & Metrics */
+        .metric-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .metric-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2a2a;
+            font-size: 13px;
+        }
+
+        .metric-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #888;
+            width: 40%;
+        }
+
+        .metric-value {
+            color: #e0e0e0;
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 500;
+            text-align: right;
+        }
+
+        .metric-unit {
+            color: #666;
+            font-size: 11px;
+            margin-left: 4px;
+        }
+
+        /* Harmonic Bands Table */
+        .bands-container {
+            margin-top: 15px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+
+        .bands-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .bands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .band-chip {
+            background: #222;
+            border: 1px solid #333;
+            padding: 6px 10px;
+            border-radius: 2px;
+            font-size: 12px;
+            font-family: 'Roboto Mono', monospace;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .band-chip span {
+            color: #5a9bd5;
+        }
+
+        /* Compact Metrics (Right Column) */
+        .compact-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .compact-stat:last-child {
+            margin-bottom: 0;
+        }
+
+        .compact-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .compact-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .stat-highlight {
+            color: #5a9bd5;
+        }
+
+        .status-safe {
+            color: #16a34a;
+        }
+
+        .status-moderate {
+            color: #eab308;
+        }
+
+        .status-hazard {
+            color: #dc2626;
+        }
+
+        .status-nodata {
+            color: #666;
+        }
+
+        /* Vibration Bar */
+        .vib-bar-bg {
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin-top: 12px;
+            width: 100%;
+        }
+
+        .vib-bar-fill {
+            height: 100%;
+            background: #eab308;
+            border-radius: 3px;
         }

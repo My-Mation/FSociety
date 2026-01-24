@@ -152,45 +152,60 @@
         <!-- ROW 4: SENSOR GROUP (GAS & VIBRATION)        -->
         <!-- ============================================ -->
 
-        <!-- Gas Gauge (Col-6) -->
+        <!-- Gas Gauge & Status (Col-6) -->
         <div class="tile col-6" style="height: 260px;">
             <div class="tile-header">
-                <span class="tile-title">GAS CONCENTRATION GAUGE (PPM)</span>
+                <span class="tile-title">GAS CONCENTRATION</span>
+                <span class="tile-title" style="font-size: 9px;">PPM</span>
             </div>
-            <div class="tile-content no-pad" style="padding: 10px; position: relative;">
-                <canvas id="live-gas-gauge"></canvas>
-                <div
-                    style="position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 10px; color: #888;">
-                    0 - 4200 PPM RANGE</div>
+            <div class="tile-content no-pad"
+                style="padding: 10px; position: relative; display: flex; flex-direction: column; align-items: center;">
+
+                <!-- Speedometer Canvas -->
+                <div style="width: 100%; height: 160px; position: relative;">
+                    <canvas id="live-gas-gauge"></canvas>
+                    <div style="position: absolute; bottom: 0; width: 100%; text-align: center;">
+                        <span id="live-gas-value" style="font-size: 24px; font-weight: 700; color: #e0e0e0;">2123</span>
+                        <div style="font-size: 10px; color: #888;">CURRENT PPM</div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div style="display: flex; gap: 8px; margin-top: 15px; font-size: 9px; color: #666;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></div>
+                        <span>Safe &lt;300</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div style="width: 8px; height: 8px; background: #eab308; border-radius: 50%;"></div>
+                        <span>Warn</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div style="width: 8px; height: 8px; background: #dc2626; border-radius: 50%;"></div>
+                        <span>Haz &gt;700</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Metric Values (Col-3 + Col-3) -->
-        <div class="tile col-3">
-            <div class="tile-header"><span class="tile-title">GAS (PPM)</span></div>
-            <div class="tile-content">
-                <div class="kpi-value small" id="live-gas-value">2123</div>
-                <div class="kpi-unit" title="PPM = parts per million">CONCENTRATION</div>
-            </div>
-        </div>
-
-        <div class="tile col-3">
+        <!-- Vibration Metric (Col-6) -->
+        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
             <div class="tile-header"><span class="tile-title">VIBRATION (G)</span></div>
             <div class="tile-content">
-                <div class="kpi-value small" id="live-vibration-value">0.00</div>
+                <div class="kpi-value large" id="live-vibration-value">0.00</div> <!-- Increased font -->
                 <div class="kpi-unit" title="RMS = Root Mean Square energy">RMS ACCEL</div>
             </div>
         </div>
 
         <!-- Histories (Col-6 + Col-6) -->
-        <div class="tile col-6" style="height: 200px;">
+        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
             <div class="tile-header"><span class="tile-title">VIBRATION HISTORY (RMS)</span></div>
             <div class="tile-content no-pad">
                 <canvas id="live-vibration-chart"></canvas>
             </div>
         </div>
 
-        <div class="tile col-6" style="height: 200px;">
+        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
             <div class="tile-header"><span class="tile-title">SYSTEM SENSOR SNAPSHOT (LIVE STATUS)</span></div>
             <div class="tile-content no-pad">
                 <div class="dense-table-container">
@@ -235,11 +250,10 @@
         <!-- HIDDEN CHARTS & STATE LOG (Hidden but kept for Logic) -->
         <div style="display: none;">
             <canvas id="live-confidence-chart"></canvas> <!-- Deprecated vis, kept for ID safety -->
-            <div id="table-state-history"></div>
+            <!-- Removed duplicate table-state-history div -->
             <!-- Start/Stop logic uses this but we don't show it anymore in strict mode? No wait, plan said 3 tables. -->
             <!-- Re-adding State History Table if I missed it? -->
             <!-- Wait, I only added Audio Table and Snapshot Table visible in Row 3/4. Where is State History? -->
-            <!-- I ran out of grid space in the strict plan? Let me check plan. -->
             <!-- Plan: Row 3 Audio Table. Row 4 Snapshot. Where is State History? -->
             <!-- Plan said "Audio Table (Col-8)". State History was removed from visual plan or merged? -->
             <!-- Implementation Plan said "Audio Table (Col-8)". It seems I dropped State History from the *visual* plan in valid 24 cols. -->
@@ -269,9 +283,11 @@
                         <thead>
                             <tr>
                                 <th>TIME</th>
-                                <th>STATE</th>
-                                <th>CONFIDENCE</th>
-                                <th>TRIGGER SOURCE</th>
+                                <th>DETECTED MACHINE</th>
+                                <th>FREQ (Hz)</th>
+                                <th>AMP (dB)</th>
+                                <th>VIB (G)</th>
+                                <th>GAS (PPM)</th>
                             </tr>
                         </thead>
                         <tbody id="table-state-history"></tbody>

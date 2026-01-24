@@ -1,0 +1,167 @@
+/* ==========================================
+   CALIBRATION TAB STYLES
+   ========================================== */
+
+/* Mode Indicator */
+.mode-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 10px;
+}
+
+.mode-badge.listening {
+    background: #22c55e;
+    color: #000;
+}
+
+.mode-badge.idle {
+    background: #374151;
+    color: #9ca3af;
+}
+
+.mode-badge.detecting {
+    background: #3b82f6;
+    color: #fff;
+}
+
+/* Listen Buttons */
+.listen-btn {
+    padding: 15px 20px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.listen-btn:hover:not(:disabled) {
+    border-color: #3b82f6;
+    background: #333;
+}
+
+.listen-btn.listening {
+    background: #166534;
+    border-color: #22c55e;
+    color: #86efac;
+}
+
+.listen-btn .machine-name {
+    font-size: 16px;
+}
+
+.listen-btn .profile-status {
+    font-size: 11px;
+    color: #888;
+}
+
+.listen-btn.has-profile .profile-status {
+    color: #16a34a;
+}
+
+/* Machine Grid (Selection) */
+.machines-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* Data Collection Indicators */
+.data-collection {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.data-item {
+    padding: 10px;
+    text-align: center;
+}
+
+.data-item .label {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 5px;
+}
+
+.data-item .count {
+    font-size: 18px;
+    font-weight: 600;
+    color: #3b82f6;
+}
+
+.data-item.inactive .count {
+    color: #666;
+}
+
+/* Big Timer */
+.timer {
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    color: #3b82f6;
+    margin: 20px 0;
+}
+
+/* Waveform Panel */
+.waveform-panel {
+    grid-column: 1 / -1;
+}
+
+.waveform-panel canvas {
+    height: 150px;
+    background: #000;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.waveform-placeholder {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    padding: 40px;
+}
+
+/* Inactive Panel State */
+.panel-inactive {
+    opacity: 0.5;
+    pointer-events: none;
+    position: relative;
+}
+
+.panel-inactive::after {
+    content: 'Click "Start Machine Detecting" to activate';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Progress Bars */
+.progress-bar {
+    height: 8px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 4px;
+}
