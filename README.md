@@ -216,5 +216,3 @@ FSociety/
 
 ---
 
-## 📜 License
-MIT License. Built for the Hackathon 2026.
