@@ -266,18 +266,16 @@ function initGasGauge() {
         data: {
             labels: ['Safe', 'Warning', 'Hazard'],
             datasets: [{
-                data: [300, 400, 3500],
+                data: [0, 4200], // Start empty
                 needleValue: 0,
                 backgroundColor: [
-                    '#15803d', // Dark Green (Safe)
-                    '#a16207', // Dark Yellow (Warn)
-                    '#991b1b'  // Dark Red (Haz)
+                    '#FC5C02', // Orange (Filled part)
+                    '#333333'  // Dark Grey (Empty part)
                 ],
-                borderWidth: 1,
-                borderColor: '#111',
+                borderWidth: 0,
                 hoverOffset: 0,
                 circumference: 180,
-                rotation: -90, // Start at Left (West) - Chart.js 3/4 standard for semi-circle
+                rotation: -90,
                 cutout: '75%'
             }]
         },
@@ -298,9 +296,21 @@ function initGasGauge() {
 function updateGasGauge(value) {
     if (!gasGaugeChart) return;
 
-    // Just update needle, zones stay static
+    // Dynamic Fill Logic
+    const max = 4200;
+    const clampedVal = Math.min(Math.max(value, 0), max);
+
+    // Update chart data: [Filled, Empty]
+    gasGaugeChart.data.datasets[0].data = [clampedVal, max - clampedVal];
+
+    // Also update needle if we keep it, or remove it? User said "show upto what part is gas".
+    // Usually a fill gauge doesn't need a needle, but let's keep it for precision if helpful,
+    // or arguably the fill IS the indicator.
+    // The user's request "show upto what part is gas" strongly implies a bar/fill.
+    // I will keep the needle for now as a pointer, but the fill is the main visual.
     gasGaugeChart.data.datasets[0].needleValue = value;
-    gasGaugeChart.update('none'); // No animation for prompt feeling
+
+    gasGaugeChart.update('none');
 }
 
 // ==========================================
@@ -332,7 +342,7 @@ const CalibrationAudioGraph = {
                 datasets: [{
                     label: 'Amplitude',
                     data: this.data,
-                    borderColor: '#3b82f6',
+                    borderColor: '#FC5C02', // Orange
                     borderWidth: 2,
                     pointRadius: 0,
                     tension: 0,
@@ -399,8 +409,8 @@ const CalibrationVibrationGraph = {
                 datasets: [{
                     label: 'Vibration (RMS)',
                     data: this.data,
-                    borderColor: '#eab308', // Warning Yellow for Vib
-                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    borderColor: '#FC5C02', // Orange
+                    backgroundColor: 'rgba(252, 92, 2, 0.1)',
                     borderWidth: 2,
                     pointRadius: 0,
                     tension: 0.1,
@@ -477,7 +487,7 @@ const AudioHistoryGraph = {
                 datasets: [{
                     label: 'Audio Level',
                     data: this.data,
-                    borderColor: '#3b82f6',
+                    borderColor: '#FC5C02', // Orange
                     borderWidth: 2,
                     pointRadius: 0, // Keep points hidden but allow hover
                     pointHitRadius: 10, // Easier to hover
@@ -624,7 +634,7 @@ async function sendLiveBatch() {
             // SEMANTIC FIX: "Machine 1?" -> "Machine 1 (Slightly Different)"
             const machineName = fallback.machine.replace('_', ' ').toUpperCase();
             nameEl.textContent = `${machineName} (SLIGHTLY DIFFERENT)`;
-            nameEl.style.color = '#eab308'; // Warning Yellow
+            nameEl.style.color = '#FC5C02'; // Orange
 
             const confPercent = (fallback.confidence * 100).toFixed(0);
             confEl.textContent = `${confPercent}%`; // Just percentage, no text
@@ -1125,7 +1135,7 @@ async function loadProfiles() {
             const status = document.getElementById('status-' + m);
             if (btn && status) {
                 if (machineProfiles[m]) {
-                    status.textContent = '✓ Profile saved';
+                    status.textContent = 'Profile saved';
                     btn.classList.add('has-profile');
                 } else {
                     status.textContent = 'No profile';
@@ -1301,7 +1311,7 @@ function drawWaveform(data, ctx) {
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     // Draw simple waveform
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = '#FC5C02'; // Orange
     ctx.lineWidth = 2;
     ctx.beginPath();
 
@@ -1336,7 +1346,7 @@ function drawSpectrum(frequencyData, ctx, nyquist) {
         const barHeight = (frequencyData[i] / 255) * height;
         const x = i * barWidth;
 
-        ctx.fillStyle = '#3b82f6';
+        ctx.fillStyle = '#FC5C02'; // Orange
         ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
     }
 
@@ -1364,7 +1374,7 @@ function drawHistory(dataArray, ctx, label = '') {
     const max = Math.max(...dataArray, 1);
 
     // Draw line
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = '#FC5C02';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
@@ -1393,7 +1403,7 @@ function drawHistory(dataArray, ctx, label = '') {
     ctx.fillText('Max: ' + max.toFixed(1), width - 5, 12);
 }
 
-function drawMiniLineChart(dataArray, ctx, color = '#3b82f6', maxValue = null, chartType = null) {
+function drawMiniLineChart(dataArray, ctx, color = '#FC5C02', maxValue = null, chartType = null) {
     if (!ctx || dataArray.length === 0) return;
 
     // Ensure canvas has proper dimensions
@@ -1654,7 +1664,7 @@ function initLiveSignalChart() {
             datasets: [{
                 label: 'Normalized Amplitude',
                 data: new Array(1024).fill(0.5),
-                borderColor: '#3b82f6',
+                borderColor: '#FC5C02',
                 borderWidth: 1.5,
                 pointRadius: 0,
                 tension: 0.1, // Slight curve for waveform look
@@ -2062,11 +2072,11 @@ async function fetchLiveESP32Data() {
         // Color Logic for Gas Value
         if (ui.gasVal) {
             if (gasRaw > GAS_HAZARD_LIMIT || gasStatus === 'RISK' || gasStatus === 'DANGER') {
-                ui.gasVal.style.color = '#dc2626';
+                ui.gasVal.style.color = '#FC5C02';
             } else if (gasRaw > GAS_SAFE_LIMIT || gasStatus === 'WARNING') {
-                ui.gasVal.style.color = '#eab308';
+                ui.gasVal.style.color = '#FC5C02';
             } else {
-                ui.gasVal.style.color = '#22c55e';
+                ui.gasVal.style.color = '#E2CEAE';
             }
         }
 
@@ -2096,7 +2106,7 @@ async function fetchLiveESP32Data() {
                 liveVibrationCtx = ui.vibCanvas.getContext('2d');
                 resizeCanvas(ui.vibCanvas);
             }
-            if (liveVibrationCtx) drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#dc2626', 100, 'vibration');
+            if (liveVibrationCtx) drawMiniLineChart(vibrationHistory, liveVibrationCtx, '#FC5C02', 100, 'vibration');
         }
 
     } catch (err) {

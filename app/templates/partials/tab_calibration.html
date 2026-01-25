@@ -36,7 +36,7 @@
             <div class="tile-content" style="flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
                     <div class="kpi-unit">LISTENING FOR</div>
-                    <div class="kpi-value" id="cal-active-machine" style="color: #fdeb4d;">--</div>
+                    <div class="kpi-value" id="cal-active-machine" style="color: var(--text-primary);">--</div>
                 </div>
                 <div style="text-align: right;">
                     <div class="kpi-value large" id="calibration-timer" style="color: #3b82f6;">0s</div>
@@ -54,12 +54,12 @@
                 <span class="tile-title">SESSION CONTROLS</span>
             </div>
             <div class="tile-content" style="flex-direction: row; align-items: center; gap: 15px;">
-                <button id="calibration-stop" class="stop-btn" onclick="stopCalibration()"
-                    style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center;">
+                <button id="calibration-stop" onclick="stopCalibration()"
+                    style="flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid #dc2626; color: #dc2626;">
                     STOP LISTENING
                 </button>
                 <button id="calibration-save" onclick="saveProfile()" disabled
-                    style="flex: 1; height: 100%; background: #3b82f6; display: flex; align-items: center; justify-content: center;">
+                    style="flex: 1; height: 100%; background: transparent; border: 1px solid var(--primary-accent); color: var(--primary-accent); display: flex; align-items: center; justify-content: center;">
                     SAVE PROFILE
                 </button>
             </div>

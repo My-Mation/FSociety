@@ -18,14 +18,15 @@
 
 /* Sensor Panels */
 .sensor-panel {
-    background: #1a1a1a;
+    background: var(--card-bg);
     border-radius: 6px;
     padding: 20px;
+    border: 1px solid var(--border-color);
 }
 
 .sensor-panel h4 {
     margin: 0 0 10px 0;
-    color: #888;
+    color: var(--text-secondary);
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -35,7 +36,7 @@
 .sensor-panel .value-large {
     font-size: 32px;
     font-weight: 700;
-    color: #5a9bd5;
+    color: var(--primary-accent);
     margin-bottom: 8px;
 }
 
@@ -58,28 +59,29 @@
 }
 
 .gas-indicator.safe {
-    border: 1px solid #22c55e;
+    border: 1px solid var(--border-color);
 }
 
 .gas-indicator.safe .gas-value {
-    color: #22c55e;
+    color: var(--text-primary);
+    /* Beige for safe */
 }
 
 .gas-indicator.warning {
-    border: 1px solid #eab308;
+    border: 1px solid var(--primary-accent);
 }
 
 .gas-indicator.warning .gas-value {
-    color: #eab308;
+    color: var(--primary-accent);
 }
 
 .gas-indicator.hazardous {
-    border: 1px solid #dc2626;
-    background: #2a1a1a;
+    border: 1px solid var(--primary-accent);
+    background: rgba(252, 92, 2, 0.1);
 }
 
 .gas-indicator.hazardous .gas-value {
-    color: #dc2626;
+    color: var(--primary-accent);
 }
 
 /* Vibration Bar */
@@ -98,7 +100,7 @@
 
 .vibration-bar .fill {
     height: 100%;
-    background: #3b82f6;
+    background: var(--primary-accent);
     border-radius: 4px;
 }
 
@@ -117,23 +119,25 @@
 }
 
 .vibration-intensity.low {
-    background: #064e3b;
-    color: #34d399;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .vibration-intensity.medium {
-    background: #854d0e;
-    color: #fde047;
+    background: var(--card-bg);
+    color: var(--primary-accent);
+    border: 1px solid var(--primary-accent);
 }
 
 .vibration-intensity.high {
-    background: #7f1d1d;
-    color: #fca5a5;
+    background: var(--primary-accent);
+    color: #fff;
 }
 
 /* Detection Status Cards */
 .detected-machine-card {
-    background: #1a1a1a;
+    background: var(--card-bg);
     border-radius: 6px;
     padding: 20px;
     text-align: center;
@@ -142,21 +146,23 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    border: 1px solid var(--border-color);
 }
 
 .detected-machine-card.detected {
-    background: #0f1f0f;
+    background: rgba(252, 92, 2, 0.1);
+    /* Low opacity orange/brown instead of green */
 }
 
 .detected-machine-card.likely {
-    border: 1px dashed #3b82f6;
-    background: #0a1220;
+    border: 1px dashed var(--primary-accent);
+    background: rgba(124, 107, 81, 0.1);
 }
 
 .detected-machine-card .machine-name {
     font-size: 24px;
     font-weight: 700;
-    color: #5a9bd5;
+    color: var(--primary-accent);
 }
 
 .detected-machine-card .confidence {
@@ -175,7 +181,7 @@
     font-weight: 600;
     padding: 20px;
     text-align: center;
-    background: #2a2a2a;
+    background: var(--bg-secondary);
     border-radius: 4px;
     margin-bottom: 20px;
     min-height: 80px;
@@ -185,16 +191,18 @@
 }
 
 .detection-status.active {
-    background: #166534;
-    color: #86efac;
+    background: var(--primary-accent);
+    color: #fff;
 }
 
 /* Charts */
 .chart-container {
-    background: #0f0f0f;
+    background: var(--bg-dark);
+    /* Darker background for chart contrast */
     border-radius: 6px;
     padding: 15px;
     margin-top: 15px;
+    border: 1px solid var(--border-color);
 }
 
 .chart-title {
@@ -222,9 +230,10 @@
 }
 
 .stat-card {
-    background: #1a1a1a;
+    background: var(--card-bg);
     padding: 12px;
     border-radius: 6px;
+    border: 1px solid var(--border-color);
 }
 
 .stat-label {
@@ -239,7 +248,7 @@
 .stat-value {
     font-size: 20px;
     font-weight: 600;
-    color: #5a9bd5;
+    color: var(--primary-accent);
 }
 
 .stat-unit {

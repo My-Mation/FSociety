@@ -3,13 +3,11 @@
 {% block content %}
 <div class="tabs">
     <button class="tab-btn active" onclick="switchTab(event, 'calibration')">Calibration</button>
-    <button class="tab-btn" onclick="switchTab(event, 'runcheck')">Run Check</button>
     <button class="tab-btn" onclick="switchTab(event, 'livedetection')">Live Detection</button>
     <button class="tab-btn" onclick="switchTab(event, 'profiles')">Profiles</button>
 </div>
 
 {% include "partials/tab_calibration.html" %}
-{% include "partials/tab_runcheck.html" %}
 {% include "partials/tab_live.html" %}
 {% include "partials/tab_profiles.html" %}
 

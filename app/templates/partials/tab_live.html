@@ -12,7 +12,7 @@
             <button id="live-start-btn" onclick="startLiveDetection()">START MONITORING</button>
             <button id="live-stop-btn" class="stop-btn" onclick="stopLiveDetection()" disabled>STOP</button>
             <button id="gemini-analysis-btn" onclick="openGeminiAnalysis()"
-                style="display: none; background: #5a9bd5; padding: 8px 16px; font-size: 12px; border: none; font-weight: 700; border-radius: 4px; cursor: pointer;">AI
+                style="display: none; background: #FC5C02; padding: 10px 24px; font-size: 14px; border: none; font-weight: 700; border-radius: 4px; cursor: pointer; height: 42px; vertical-align: bottom;">AI
                 ANALYSIS</button>
         </div>
     </div>
@@ -32,7 +32,7 @@
                     title="Best match from trained profiles">SOURCE</span>
             </div>
             <div class="tile-content">
-                <div class="kpi-value" id="live-detected-machine" style="color: #5a9bd5; font-size: 20px;">--</div>
+                <div class="kpi-value" id="live-detected-machine" style="color: #FC5C02; font-size: 20px;">--</div>
                 <div class="kpi-unit" style="margin-top: 5px;">AWAITING SIGNAL...</div>
             </div>
         </div>
@@ -81,7 +81,7 @@
         <!-- LIVE WAVEFORM (Col-12) - SIDE BY SIDE -->
         <div class="tile col-12" style="height: 550px; border-color: #444;">
             <div class="tile-header">
-                <span class="tile-title" style="color: #3b82f6;">LIVE SIGNAL WAVEFORM</span>
+                <span class="tile-title" style="color: #FC5C02;">LIVE SIGNAL WAVEFORM</span>
                 <span class="tile-title" title="Real-time amplitude visualization">OSCILLOSCOPE (10ms WINDOW)</span>
             </div>
             <div class="tile-content no-pad">
@@ -92,7 +92,7 @@
         <!-- AUDIO LEVEL HISTORY (Col-12, Side by Side) -->
         <div class="tile col-12" style="height: 550px; border-color: #444;">
             <div class="tile-header">
-                <span class="tile-title" style="color: #3b82f6;">Audio Level History (Session)</span>
+                <span class="tile-title" style="color: #FC5C02;">Audio Level History (Session)</span>
                 <span class="tile-title" title="Fixed scale, full-session view">From server start to current time</span>
             </div>
             <div class="tile-content no-pad">
@@ -173,15 +173,15 @@
                 <!-- Legend -->
                 <div style="display: flex; gap: 8px; margin-top: 15px; font-size: 9px; color: #666;">
                     <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></div>
+                        <div style="width: 8px; height: 8px; background: #312B1E; border-radius: 50%;"></div>
                         <span>Safe &lt;300</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #eab308; border-radius: 50%;"></div>
+                        <div style="width: 8px; height: 8px; background: #FC5C02; border-radius: 50%;"></div>
                         <span>Warn</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #dc2626; border-radius: 50%;"></div>
+                        <div style="width: 8px; height: 8px; background: #4A4031; border-radius: 50%;"></div>
                         <span>Haz &gt;700</span>
                     </div>
                 </div>

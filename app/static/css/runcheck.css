@@ -3,15 +3,18 @@
    ========================================== */
 
 .check-results {
-    background: #1a1a1a;
+    background: var(--card-bg);
     border-radius: 6px;
     padding: 20px;
     margin-top: 30px;
+    border: 1px solid var(--border-color);
 }
 
 .check-results h4 {
     margin: 0 0 15px 0;
-    color: #e0e0e0;
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+    font-weight: 700;
 }
 
 .check-result-item {
@@ -23,7 +26,8 @@
 }
 
 .check-result-item .match {
-    color: #22c55e;
+    color: var(--primary-accent);
+    /* Match = Active/Verified = Orange */
     font-weight: 600;
 }
 

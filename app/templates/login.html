@@ -5,28 +5,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VISO | Machine Diagnostics Access</title>
-    <!-- Roboto Font -->
+    <!-- Fonts: Waterfall (Script) and DM Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Waterfall&family=DM+Sans:opsz,wght@9..40,400;500;700&family=Roboto:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
         :root {
-            --bg-color: #0f0f0f;
-            --card-bg: #1a1a1a;
-            --border-color: #333;
-            --text-primary: #e0e0e0;
-            --text-secondary: #888;
-            --accent-color: #3b82f6;
-            /* VISO Blue */
-            --success-color: #22c55e;
-            --font-family: 'Roboto', sans-serif;
+            /* Global Industrial Theme Variables */
+            --bg-color: #0d0b09;
+            /* Almost Black */
+            --card-bg: #1c1814;
+            /* Very Dark Brown */
+            --border-color: #332b22;
+            /* Darker Border */
+            --text-primary: #E2CEAE;
+            /* Beige */
+            --text-secondary: #AB9C80;
+            /* Dimmer Beige */
+            --accent-color: #FC5C02;
+            /* Industrial Orange */
+
+            --success-color: #E2CEAE;
+            /* Changed from Green to Beige */
+
+            --font-heading: 'Waterfall', cursive;
+            --font-body: 'DM Sans', sans-serif;
         }
 
         body {
-            font-family: var(--font-family);
+            font-family: var(--font-body);
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
@@ -34,11 +46,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* Subtle grid texture */
-            background-image:
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
+            /* No grid texture, just plain dark industrial */
         }
 
         .login-wrapper {
@@ -83,14 +91,17 @@
         }
 
         .system-title {
-            font-size: 24px;
-            font-weight: 700;
+            font-family: var(--font-heading);
+            font-size: 32px;
+            font-weight: 400;
+            /* Waterfall doesn't need bold */
             margin: 0 0 5px 0;
-            color: #fff;
+            color: var(--text-primary);
             letter-spacing: 1px;
         }
 
         .system-subtitle {
+            font-family: var(--font-body);
             font-size: 13px;
             font-weight: 500;
             color: var(--accent-color);
@@ -116,7 +127,8 @@
 
         .security-text {
             font-size: 11px;
-            color: #555;
+            color: var(--text-secondary);
+            /* Use var */
             margin-top: 15px;
             display: flex;
             align-items: center;
@@ -127,7 +139,8 @@
         .security-icon {
             width: 10px;
             height: 10px;
-            background: #22c55e;
+            background: var(--accent-color);
+            /* Changed from Green to Orange */
             border-radius: 50%;
             display: inline-block;
         }
@@ -136,11 +149,13 @@
         .status-row {
             margin-top: 30px;
             padding-top: 20px;
-            border-top: 1px solid #2a2a2a;
+            border-top: 1px solid var(--border-color);
+            /* Use var */
             display: flex;
             justify-content: space-between;
             font-size: 11px;
-            color: #666;
+            color: var(--text-secondary);
+            /* Use var */
         }
 
         .status-item {
@@ -156,12 +171,14 @@
         }
 
         .status-val {
-            color: var(--success-color);
+            color: var(--text-primary);
+            /* Changed from Green to Beige */
             font-weight: 600;
         }
 
         .status-val.awaiting {
-            color: #eab308;
+            color: var(--text-secondary);
+            /* Changed from Yellow to Dim Beige */
         }
     </style>
 </head>

@@ -171,7 +171,8 @@ def ingest():
             update_detection_history(user_id, running_machines, all_machines)
             stable_machines = get_stable_machines(user_id, all_machines)
 
-            print(f"\n[OK] LIVE BATCH: {len(frames)} frames, {inserted_count} inserted")
+            skipped_count = len(frames) - inserted_count
+            print(f"\n[OK] LIVE BATCH: {len(frames)} frames, {inserted_count} inserted ({skipped_count} skipped: low amp/no peaks)")
             print(f"   Detected (raw): {sorted(running_machines)}")
             print(f"   Stable machines: {sorted(stable_machines)}")
 
