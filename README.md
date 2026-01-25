@@ -16,6 +16,20 @@ System Output: "🎵 PUMP + MOTOR + GENERATOR"
 
 ---
 
+## 📸 System Screenshots
+
+### Industrial Dashboard & Calibration
+<p align="center">
+  <img src="app/static/img/viso1.jpeg" width="45%" alt="Dashboard Overview">
+  <img src="app/static/img/viso2.jpeg" width="45%" alt="Live Detection">
+</p>
+<p align="center">
+  <img src="app/static/img/viso3.jpeg" width="45%" alt="Calibration">
+  <img src="app/static/img/viso4.jpeg" width="45%" alt="Login">
+</p>
+
+---
+
 ## 🚀 Quick Start (5 Minutes)
 
 ### 1. Start Server
