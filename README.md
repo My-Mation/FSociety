@@ -4,7 +4,7 @@
 
 **FSociety** is a browser-based machine sound monitoring system that **simultaneously detects 3+ machines** running together by analyzing their unique frequency signatures using FFT (Fast Fourier Transform).
 
-### Real-World Example
+### Real-World Examples
 ```
 Running together:
 ├─ Machine A (250 Hz) — Pump
