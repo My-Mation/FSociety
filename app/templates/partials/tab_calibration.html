@@ -235,6 +235,63 @@
             </div>
         </div>
 
+        <!-- ROW C: GAS GAUGE + ALL-TIME VIBRATION -->
+        <div class="tile"
+            style="height: 300px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
+            <div class="tile-header">
+                <span class="tile-title">GAS CONCENTRATION</span>
+                <span class="tile-title">PPM</span>
+            </div>
+            <div class="tile-content no-pad"
+                style="padding: 10px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="width: 100%; height: 200px; position: relative;">
+                    <canvas id="calibration-gas-gauge"></canvas>
+                    <div style="position: absolute; bottom: -10px; width: 100%; text-align: center;">
+                        <span id="cal-gas-value-display"
+                            style="font-size: 28px; font-weight: 700; color: #e0e0e0;">--</span>
+                        <div style="font-size: 10px; color: #888;">CURRENT PPM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tile"
+            style="height: 300px; width: 48%; flex: 0 0 48%; margin: 0 1% 20px 1%; box-sizing: border-box;">
+            <div class="tile-header">
+                <span class="tile-title">CONNECTED SENSOR DEVICES</span>
+                <span class="tile-title">ACTIVE NODES</span>
+            </div>
+            <div class="tile-content no-pad">
+                <div class="dense-table-container">
+                    <table class="dense-table">
+                        <thead>
+                            <tr>
+                                <th>DEVICE</th>
+                                <th>TYPE</th>
+                                <th>STATUS</th>
+                                <th>LAST SEEN</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cal-devices-table">
+                            <!-- Populated by JS -->
+                            <tr>
+                                <td>BROWSER_MIC</td>
+                                <td>AUDIO</td>
+                                <td><span class="status-cell-green">ONLINE</span></td>
+                                <td>Now</td>
+                            </tr>
+                            <tr>
+                                <td>ESP32_MAIN</td>
+                                <td>WIFI_MCU</td>
+                                <td><span class="status-cell-yellow" id="cal-esp32-status">WAITING</span></td>
+                                <td id="cal-esp32-seen">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div id="calibration-placeholder" class="tile"
             style="width: 100%; display:none; height: 100px; text-align: center;">
             <div class="tile-content">

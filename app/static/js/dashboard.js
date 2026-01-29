@@ -93,9 +93,9 @@ function initializeCanvases() {
 
     const calibHistory = document.getElementById('calibration-history'); // Kept for safety if ID exists, but we moved to new charts
 
-    // NEW Calibration Graphs
     CalibrationAudioGraph.init();
     CalibrationVibrationGraph.init();
+    CalibrationGasGauge.init();
 
 
 
@@ -288,8 +288,7 @@ function initGasGauge() {
             },
             layout: { padding: 0 },
             animation: false
-        },
-        plugins: [gaugeNeedle]
+        }
     });
 }
 
@@ -302,13 +301,6 @@ function updateGasGauge(value) {
 
     // Update chart data: [Filled, Empty]
     gasGaugeChart.data.datasets[0].data = [clampedVal, max - clampedVal];
-
-    // Also update needle if we keep it, or remove it? User said "show upto what part is gas".
-    // Usually a fill gauge doesn't need a needle, but let's keep it for precision if helpful,
-    // or arguably the fill IS the indicator.
-    // The user's request "show upto what part is gas" strongly implies a bar/fill.
-    // I will keep the needle for now as a pointer, but the fill is the main visual.
-    gasGaugeChart.data.datasets[0].needleValue = value;
 
     gasGaugeChart.update('none');
 }
@@ -456,6 +448,59 @@ const CalibrationVibrationGraph = {
     }
 };
 
+// CalibrationAllTimeVibrationGraph Removed
+
+
+const CalibrationGasGauge = {
+    chart: null,
+
+    init() {
+        const ctx = document.getElementById('calibration-gas-gauge');
+        if (!ctx) return;
+
+        if (this.chart) this.chart.destroy();
+
+        // Industrial Zones: Safe (0-300), Warn(300-700), Hazard(700-4200)
+        this.chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Safe', 'Warning', 'Hazard'],
+                datasets: [{
+                    data: [0, 4200], // Start empty
+                    needleValue: 0,
+                    backgroundColor: ['#FC5C02', '#333333'],
+                    borderWidth: 0,
+                    hoverOffset: 0,
+                    circumference: 180,
+                    rotation: -90,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                layout: { padding: 0 },
+                animation: false
+            }
+        });
+    },
+
+    update(value) {
+        if (!this.chart) return;
+        const max = 4200;
+        const clampedVal = Math.min(Math.max(value, 0), max);
+        this.chart.data.datasets[0].data = [clampedVal, max - clampedVal];
+        this.chart.update('none');
+
+        const display = document.getElementById('cal-gas-value-display');
+        if (display) {
+            display.textContent = value;
+            display.style.color = (value > 700) ? '#FC5C02' : (value > 300 ? '#FC5C02' : '#E2CEAE');
+        }
+    }
+};
+
 // ==========================================
 // AUDIO LEVEL HISTORY MONITOR (CLEAN IMPLEMENTATION)
 // ==========================================
@@ -578,6 +623,104 @@ const AudioHistoryGraph = {
         this.data.push(Math.max(0.5, level)); // Minimum 0.5 visibility
 
         // Batch Update logic could be added here, but direct update 'none' is usually fine for <10Hz
+        this.chart.update('none');
+    }
+};
+
+const AllTimeVibrationGraph = {
+    chart: null,
+    data: [],
+    labels: [],
+    startTime: 0,
+
+    init() {
+        const ctx = document.getElementById('all-time-vibration-chart');
+        if (!ctx) return;
+
+        // Reset
+        this.data = [];
+        this.labels = [];
+        this.startTime = 0;
+
+        if (this.chart) {
+            this.chart.destroy();
+        }
+
+        // Configure Chart
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.labels,
+                datasets: [{
+                    label: 'Vibration (G)',
+                    data: this.data,
+                    borderColor: '#FC5C02', // Orange
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHitRadius: 10,
+                    tension: 0,
+                    fill: false,
+                    spanGaps: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                layout: {
+                    padding: { left: 10, right: 10, bottom: 10 }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff'
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: { display: true, text: 'Time (s)', color: '#aaa', font: { size: 10 } },
+                        grid: { color: '#333' },
+                        ticks: { color: '#aaa', maxTicksLimit: 10 }
+                    },
+                    y: {
+                        display: true,
+                        min: 0,
+                        suggestedMax: 1, // Vibration is usually small
+                        beginAtZero: true,
+                        grid: { color: '#333' },
+                        title: { display: true, text: 'G-Force', color: '#aaa', font: { size: 10 } },
+                        ticks: { color: '#aaa' }
+                    }
+                }
+            }
+        });
+    },
+
+    start() {
+        this.startTime = Date.now();
+        this.data = [];
+        this.labels = [];
+        if (this.chart) {
+            this.chart.data.labels = this.labels;
+            this.chart.data.datasets[0].data = this.data;
+            this.chart.update();
+        }
+    },
+
+    update(level) {
+        if (!this.chart || this.startTime === 0) return;
+        const seconds = ((Date.now() - this.startTime) / 1000).toFixed(1);
+        this.labels.push(seconds);
+        this.data.push(level);
         this.chart.update('none');
     }
 };
@@ -768,6 +911,7 @@ async function startListeningForMachine(machineId) {
     // Reset Graphs
     CalibrationAudioGraph.reset();
     CalibrationVibrationGraph.reset();
+    CalibrationGasGauge.update(0);
 
     // Update UI
     document.getElementById('cal-mode-badge').textContent = 'LISTENING';
@@ -884,23 +1028,46 @@ function startCalibrationESP32Polling() {
             console.log('ESP32 poll received:', data);
 
             if (data.vibration !== undefined) {
-                calibrationVibrationSamples.push(data.vibration);
+                // Fix: Invert Logic (0=Vibration, 1=Still)
+                const rawVib = data.vibration;
+                const vibValue = rawVib === 0 ? 1 : 0;
+
+                calibrationVibrationSamples.push(vibValue);
                 document.getElementById('cal-vib-count').textContent = calibrationVibrationSamples.length;
                 console.log('Vibration samples now:', calibrationVibrationSamples.length);
 
-                // Update Graph
-                // Use calibrationTimer which is roughly synced
-                CalibrationVibrationGraph.update(calibrationTimer, data.vibration);
+                // Update Graphs
+                CalibrationVibrationGraph.update(calibrationTimer, vibValue);
             }
             if (data.gas_raw !== undefined) {
                 calibrationGasSamples.push({ raw: data.gas_raw, status: data.gas_status });
                 document.getElementById('cal-gas-count').textContent = calibrationGasSamples.length;
                 console.log('Gas samples now:', calibrationGasSamples.length);
+                CalibrationGasGauge.update(data.gas_raw);
+                updateCalibrationDeviceTable(true, data.gas_status);
+            } else {
+                updateCalibrationDeviceTable(false, null);
             }
         } catch (e) {
             console.warn('ESP32 poll error:', e);
+            updateCalibrationDeviceTable(false, null);
         }
     }, 500);
+}
+
+function updateCalibrationDeviceTable(isOnline, status) {
+    const statusCell = document.getElementById('cal-esp32-status');
+    const seenCell = document.getElementById('cal-esp32-seen');
+    if (!statusCell || !seenCell) return;
+
+    if (isOnline) {
+        statusCell.textContent = 'ONLINE';
+        statusCell.className = 'status-cell-green';
+        seenCell.textContent = new Date().toLocaleTimeString();
+    } else {
+        statusCell.textContent = 'OFFLINE';
+        statusCell.className = 'status-cell-red';
+    }
 }
 
 function stopCalibrationESP32Polling() {
@@ -1615,7 +1782,9 @@ function switchTab(event, tab) {
     if (tab === 'livedetection') {
         setTimeout(() => {
             initializeCanvases();
-            AudioHistoryGraph.init(); // Init Graph
+            initializeCanvases();
+            AudioHistoryGraph.init(); // Init Audio Graph
+            AllTimeVibrationGraph.init(); // Init Vibration Graph
             // Re-initialize gas chart specifically to ensure it's properly sized
             const liveGas = document.getElementById('live-gas-chart');
             if (liveGas && liveGas.offsetWidth > 0) {
@@ -1780,7 +1949,9 @@ async function startLiveDetection() {
     // Start History Graph
     // Start History Graph
     AudioHistoryGraph.start();
+    // Start History Graph
     AudioHistoryGraph.start();
+    AllTimeVibrationGraph.start();
 
 
 
@@ -1999,11 +2170,19 @@ function updateSensorSnapshotTable(gasRaw, gasStatus, vibVal) {
     const vibColor = vibVal > 0.5 ? 'status-cell-red' : 'status-cell-green';
     const micColor = 'status-cell-green'; // Always active
 
-    tbody.innerHTML = `
+    const newRows = `
         <tr><td>MIC_ARR_01</td><td>ACTIVE</td><td>dB</td><td>${time}</td><td><span class="${micColor}">OK</span></td></tr>
         <tr><td>GAS_MQX_02</td><td>${gasRaw}</td><td>PPM</td><td>${time}</td><td><span class="${gasColor}">${gasStatus}</span></td></tr>
         <tr><td>ACCEL_XYZ</td><td>${vibVal.toFixed(2)}</td><td>G</td><td>${time}</td><td><span class="${vibColor}">${vibVal > 0 ? 'MOTION' : 'STILL'}</span></td></tr>
     `;
+
+    // Prepend new rows (History Log)
+    tbody.innerHTML = newRows + tbody.innerHTML;
+
+    // Prune old rows (Keep last 30 rows = 10 updates)
+    while (tbody.children.length > 30) {
+        tbody.removeChild(tbody.lastChild);
+    }
 }
 
 function startLiveESP32Polling() {
@@ -2043,7 +2222,11 @@ async function fetchLiveESP32Data() {
         };
 
         // 2. Parse Data Safe Defaults
-        const vibValue = data.vibration || 0;
+        // FIX: Invert logic because ESP32 sends 1 (HIGH) for Still (Pullup) and 0 for Vib.
+        // We want 0 = Still, 1 = Vib.
+        const rawVib = data.vibration !== undefined ? data.vibration : 1;
+        const vibValue = (rawVib === 0) ? 1 : 0;
+
         // Fix: Allow 0 as valid gas reading. Only use 2123 if undefined.
         const gasRaw = (data.gas_raw !== undefined && data.gas_raw !== null) ? data.gas_raw : 2123;
         const gasStatus = data.gas_status || 'STANDBY';
@@ -2087,7 +2270,10 @@ async function fetchLiveESP32Data() {
         updateSensorSnapshotTable(gasRaw, gasStatus, vibValue);
 
         // 5. Track History
+        // 5. Track History
         vibrationHistory.push(Math.min(vibValue * 100, 100)); // Normalize for chart
+        AllTimeVibrationGraph.update(vibValue); // Update All-Time Graph
+
         if (vibrationHistory.length > 30) vibrationHistory.shift();
 
         gasHistory.push(gasRaw);

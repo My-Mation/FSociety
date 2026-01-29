@@ -840,8 +840,15 @@ def aggregate_esp32_data(cursor, user_id: int, start_ts: str, stop_ts: str, devi
         vib_avg, vib_peak, vib_events = 0, 0, 0
         
     vibration_summary = {
+        "avg": round(vib_avg, 2),
+        "peak": round(vib_peak, 2),
+        "event_count": vib_events
     }
     
+    # Process Gas
+    gas_raws = [r[1] for r in rows if r[1] is not None]
+    gas_statuses = [r[3] for r in rows if r[3] is not None]
+
     # Gas summary
     gas_avg = sum(gas_raws) / len(gas_raws) if gas_raws else 0
     gas_peak = max(gas_raws) if gas_raws else 0

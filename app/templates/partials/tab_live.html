@@ -149,63 +149,58 @@
 
 
         <!-- ============================================ -->
-        <!-- ROW 4: SENSOR GROUP (GAS & VIBRATION)        -->
+        <!-- ROW 4: SENSOR GROUP (GAS & VIBRATION & TABLE) -->
         <!-- ============================================ -->
 
-        <!-- Gas Gauge & Status (Col-6) -->
-        <div class="tile col-6" style="height: 260px;">
+        <!-- Gas Gauge (Col-8: Bigger) -->
+        <div class="tile col-8" style="height: 280px;">
             <div class="tile-header">
                 <span class="tile-title">GAS CONCENTRATION</span>
                 <span class="tile-title" style="font-size: 9px;">PPM</span>
             </div>
             <div class="tile-content no-pad"
-                style="padding: 10px; position: relative; display: flex; flex-direction: column; align-items: center;">
+                style="padding: 10px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;">
 
                 <!-- Speedometer Canvas -->
-                <div style="width: 100%; height: 160px; position: relative;">
+                <div style="width: 100%; height: 180px; position: relative;">
                     <canvas id="live-gas-gauge"></canvas>
-                    <div style="position: absolute; bottom: 0; width: 100%; text-align: center;">
-                        <span id="live-gas-value" style="font-size: 24px; font-weight: 700; color: #e0e0e0;">2123</span>
-                        <div style="font-size: 10px; color: #888;">CURRENT PPM</div>
+                    <div style="position: absolute; bottom: -10px; width: 100%; text-align: center;">
+                        <span id="live-gas-value" style="font-size: 32px; font-weight: 700; color: #e0e0e0;">2123</span>
+                        <div style="font-size: 11px; color: #888;">CURRENT PPM</div>
                     </div>
                 </div>
 
                 <!-- Legend -->
-                <div style="display: flex; gap: 8px; margin-top: 15px; font-size: 9px; color: #666;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #312B1E; border-radius: 50%;"></div>
+                <div style="display: flex; gap: 15px; margin-top: 20px; font-size: 10px; color: #666;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 10px; height: 10px; background: #312B1E; border-radius: 50%;"></div>
                         <span>Safe &lt;300</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #FC5C02; border-radius: 50%;"></div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 10px; height: 10px; background: #FC5C02; border-radius: 50%;"></div>
                         <span>Warn</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <div style="width: 8px; height: 8px; background: #4A4031; border-radius: 50%;"></div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <div style="width: 10px; height: 10px; background: #4A4031; border-radius: 50%;"></div>
                         <span>Haz &gt;700</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Vibration Metric (Col-6) -->
-        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
+        <!-- Vibration Metric (Col-4) -->
+        <div class="tile col-4" style="height: 280px;">
             <div class="tile-header"><span class="tile-title">VIBRATION (G)</span></div>
             <div class="tile-content">
-                <div class="kpi-value large" id="live-vibration-value">0.00</div> <!-- Increased font -->
+                <div class="kpi-value large" id="live-vibration-value" style="font-size: 48px;">0.00</div>
                 <div class="kpi-unit" title="RMS = Root Mean Square energy">RMS ACCEL</div>
+                <div id="live-vibration-intensity" class="vibration-intensity low"
+                    style="margin-top:15px; text-align:center;">LOW</div>
             </div>
         </div>
 
-        <!-- Histories (Col-6 + Col-6) -->
-        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
-            <div class="tile-header"><span class="tile-title">VIBRATION HISTORY (RMS)</span></div>
-            <div class="tile-content no-pad">
-                <canvas id="live-vibration-chart"></canvas>
-            </div>
-        </div>
-
-        <div class="tile col-6" style="height: 260px;"> <!-- Matched height -->
+        <!-- Sensor Snapshot Table (Col-12: Expanded) -->
+        <div class="tile col-12" style="height: 280px;">
             <div class="tile-header"><span class="tile-title">SYSTEM SENSOR SNAPSHOT (LIVE STATUS)</span></div>
             <div class="tile-content no-pad">
                 <div class="dense-table-container">
@@ -244,6 +239,30 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+
+        <!-- ============================================ -->
+        <!-- ROW 5: VIBRATION GRAPHS (SIDE BY SIDE)       -->
+        <!-- ============================================ -->
+
+        <!-- Vibration History (Short Term) (Col-12) -->
+        <div class="tile col-12" style="height: 400px; margin-top: 20px;">
+            <div class="tile-header"><span class="tile-title">VIBRATION HISTORY (RMS - SHORT TERM)</span></div>
+            <div class="tile-content no-pad">
+                <canvas id="live-vibration-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Vibration All-Time (Session) (Col-12) -->
+        <div class="tile col-12" style="height: 400px; margin-top: 20px;">
+            <div class="tile-header">
+                <span class="tile-title">ALL-TIME VIBRATION HISTORY</span>
+                <span class="tile-title" style="font-size: 9px;">FULL SESSION</span>
+            </div>
+            <div class="tile-content no-pad">
+                <canvas id="all-time-vibration-chart"></canvas>
             </div>
         </div>
 

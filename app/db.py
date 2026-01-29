@@ -57,6 +57,13 @@ def ensure_db_schema():
                 # Update Constraints for machine_profiles
                 cur.execute("ALTER TABLE machine_profiles DROP CONSTRAINT IF EXISTS machine_profiles_pkey")
                 cur.execute("ALTER TABLE machine_profiles ADD PRIMARY KEY (user_id, machine_id)")
+
+        # 3. Check for api_key in users table (Migration for ESP32 Auth)
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='api_key'")
+        if not cur.fetchone():
+            print("[MIGRATION] Adding api_key to users table.")
+            cur.execute("ALTER TABLE users ADD COLUMN api_key VARCHAR(64) UNIQUE")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_users_api_key ON users(api_key)")
         
         # Ensure tables exist (for fresh install)
         cur.execute("""

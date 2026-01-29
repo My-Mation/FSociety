@@ -321,9 +321,8 @@ button:disabled {
     font-size: 15px;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
 }
 
 .dense-table tr:hover {
