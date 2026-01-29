@@ -250,11 +250,9 @@ def latest_esp32():
             """
             SELECT device_id, vibration, event_count, gas_raw, gas_status, timestamp
             FROM esp32_data
-            WHERE user_id = %s
             ORDER BY timestamp DESC
             LIMIT 1
-            """,
-            (user_id,)
+            """
         )
         row = cursor.fetchone()
         if row:

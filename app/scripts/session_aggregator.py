@@ -492,8 +492,8 @@ def get_latest_data_range(conn, user_id: int, duration_seconds: int = 60) -> dic
         # Count ESP32 rows in this range
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data 
-            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
-        """, (user_id, start_ts, stop_ts))
+            WHERE timestamp BETWEEN %s AND %s
+        """, (start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         return {
@@ -526,8 +526,8 @@ def validate_time_range(conn, user_id: int, start_ts: str, stop_ts: str) -> dict
         # Count ESP32 rows
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data 
-            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
-        """, (user_id, start_ts, stop_ts))
+            WHERE timestamp BETWEEN %s AND %s
+        """, (start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         # Get actual data boundaries
@@ -580,8 +580,8 @@ def aggregate_session_data(conn, user_id: int, start_ts: str, stop_ts: str, mach
         
         cursor.execute("""
             SELECT COUNT(*) FROM esp32_data
-            WHERE user_id = %s AND timestamp BETWEEN %s AND %s
-        """, (user_id, start_ts, stop_ts))
+            WHERE timestamp BETWEEN %s AND %s
+        """, (start_ts, stop_ts))
         esp32_count = cursor.fetchone()[0]
         
         if audio_count == 0 and esp32_count == 0:
@@ -807,10 +807,9 @@ def aggregate_esp32_data(cursor, user_id: int, start_ts: str, stop_ts: str, devi
     q = """
         SELECT vibration, gas_raw, device_id, gas_status
         FROM esp32_data
-        WHERE user_id = %s
-          AND timestamp BETWEEN %s AND %s
+        WHERE timestamp BETWEEN %s AND %s
     """
-    params = [user_id, start_ts, stop_ts]
+    params = [start_ts, stop_ts]
     if device_id:
         q += " AND device_id = %s"
         params.append(device_id)

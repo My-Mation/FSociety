@@ -107,10 +107,10 @@ def debug_db():
         result['raw_audio_earliest'] = str(row[0]) if row[0] else None
         result['raw_audio_latest'] = str(row[1]) if row[1] else None
         
-        cursor.execute("SELECT COUNT(*) FROM esp32_data WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT COUNT(*) FROM esp32_data")
         result['esp32_data_count'] = cursor.fetchone()[0]
         
-        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM esp32_data WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM esp32_data")
         row = cursor.fetchone()
         result['esp32_earliest'] = str(row[0]) if row[0] else None
         result['esp32_latest'] = str(row[1]) if row[1] else None
@@ -121,7 +121,7 @@ def debug_db():
         cursor.execute("SELECT timestamp, amplitude, dominant_freq, machine_id, mode FROM raw_audio WHERE user_id = %s ORDER BY timestamp DESC LIMIT 5", (user_id,))
         result['recent_raw_audio'] = [{'timestamp': str(r[0]), 'amplitude': r[1], 'dominant_freq': r[2], 'machine_id': r[3], 'mode': r[4]} for r in cursor.fetchall()]
         
-        cursor.execute("SELECT timestamp, device_id, vibration, gas_raw, gas_status FROM esp32_data WHERE user_id = %s ORDER BY timestamp DESC LIMIT 5", (user_id,))
+        cursor.execute("SELECT timestamp, device_id, vibration, gas_raw, gas_status FROM esp32_data ORDER BY timestamp DESC LIMIT 5")
         result['recent_esp32_data'] = [{'timestamp': str(r[0]), 'device_id': r[1], 'vibration': r[2], 'gas_raw': r[3], 'gas_status': r[4]} for r in cursor.fetchall()]
         
         return jsonify(result)
